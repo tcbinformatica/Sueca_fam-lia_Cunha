@@ -2,5 +2,5 @@
   "appId": "com.amigos.sueca",
   "appName": "Sueca",
   "webDir": "public",
-  "server": { "url": "https://TROQUE-AQUI.onrender.com" }
+  "server": { "url": "https://sueca-fam-lia-cunha.onrender.com" }
 }
