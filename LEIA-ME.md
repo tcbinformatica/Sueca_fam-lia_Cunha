@@ -1,0 +1,51 @@
+# Sueca entre amigos
+
+Jogo de Sueca online e fechado: só entra quem tem o código da sala (4 letras). Os lugares vazios são preenchidos por bots, e um amigo pode entrar no meio da partida no lugar de um bot.
+
+## Regras implementadas
+- Baralho de 40 cartas (sem 8, 9 e 10). Força: A, 7, K, J, Q, 6, 5, 4, 3, 2.
+- Pontos: A=11, 7=10, K=4, J=3, Q=2 (total 120).
+- Duplas: lugares 1 e 3 contra 2 e 4.
+- O trunfo é a última carta do dador, que fica na mão dele.
+- **Renúncia liberada, igual na mesa:** o app deixa jogar qualquer carta. Quem tem o naipe puxado e joga outro está "roubando".
+  - O adversário pode tocar em **🚨 Renúncia!** durante a mão ou logo no fim dela.
+  - Se a acusação estiver certa, a dupla que acusou ganha 4 jogos e a mão acaba.
+  - Se estiver errada, a outra dupla ganha 1 jogo. Cada dupla só pode errar uma acusação por mão.
+  - Os bots nunca roubam. Mas, quando um ladrão joga depois o naipe que tinha negado, os bots adversários às vezes percebem e acusam.
+- Mais de 60 pontos = 1 jogo; 91 ou mais = 2 jogos; 120 = 4 jogos; 60 a 60 = empate.
+- Ganha a partida a dupla que chegar a 4 jogos.
+- Se alguém cair, o bot joga por ele depois de 15 segundos. Ao reabrir o app, a pessoa volta para o mesmo lugar.
+
+## Câmera e voz
+- Toque em 📷 para ligar a câmera e o microfone. A sua imagem aparece no canto de baixo e a dos amigos aparece perto dos nomes deles.
+- 🎤 liga e desliga o microfone. 🚫📷 desliga tudo.
+- O vídeo vai direto de um celular para o outro, sem passar pelo servidor.
+- Em algumas redes de 4G a conexão direta é bloqueada e o vídeo não aparece. Se isso acontecer, dá para adicionar um servidor TURN; me peça que eu configuro.
+
+## Passo 1: subir o servidor (grátis, no Render)
+1. Crie uma conta no GitHub e um repositório novo. Envie todos os arquivos desta pasta (inclusive a pasta `.github`).
+2. Crie uma conta em render.com e escolha **New > Web Service**, ligado a esse repositório.
+3. Configure:
+   - Build Command: `npm install`
+   - Start Command: `npm start`
+   - Plano: Free
+4. Quando terminar, o Render mostra um endereço como `https://sueca-xyz.onrender.com`.
+
+Nesse ponto o jogo já funciona: abra esse endereço no navegador do celular e teste.
+
+Observação: no plano grátis o servidor "dorme" depois de 15 minutos sem uso. A primeira pessoa a abrir espera uns 50 segundos; depois disso fica rápido.
+
+## Passo 2: gerar o APK (sem instalar nada no PC)
+1. No GitHub, edite o arquivo `capacitor.config.json` e troque `https://TROQUE-AQUI.onrender.com` pelo seu endereço do Render.
+2. Vá na aba **Actions**, escolha **Gerar APK** e clique em **Run workflow**.
+3. Depois de uns 5 minutos, abra a execução concluída e baixe o artefato `sueca-apk` (vem em .zip, com o `app-debug.apk` dentro).
+4. Mande o APK para os amigos. No Android, é preciso permitir "instalar apps de fontes desconhecidas".
+
+O APK só abre o seu servidor. Então, se você mudar o jogo no futuro, basta atualizar o servidor; não precisa gerar outro APK.
+
+## Testar no computador
+```
+npm install
+npm start
+```
+Depois abra http://localhost:3000 em várias abas.
