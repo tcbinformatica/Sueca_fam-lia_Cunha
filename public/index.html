@@ -65,6 +65,7 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
 #top .tb{display:flex;gap:6px}
 #toast{position:fixed;left:50%;bottom:120px;transform:translateX(-50%);background:#222;padding:10px 16px;border-radius:10px;opacity:0;transition:opacity .3s;pointer-events:none}
 #toast.on{opacity:1}
+#gcode{position:absolute;top:0;left:0;width:auto;margin:0;padding:6px 10px;font-size:14px;z-index:3}
 #toast{z-index:9;max-width:90vw;text-align:center}
 </style>
 </head>
@@ -98,6 +99,7 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
     <div id="trick"></div>
     <video id="v-top" class="vid" autoplay playsinline></video><video id="v-left" class="vid" autoplay playsinline></video>
     <video id="v-right" class="vid" autoplay playsinline></video><video id="v-bottom" class="vid" autoplay playsinline muted></video>
+    <button id="gcode" class="ghost"></button>
     <button id="acc" hidden>🚨 Renúncia!</button>
   </div>
   <div id="status"></div>
@@ -114,6 +116,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let pid; try{pid=localStorage.pid||(localStorage.pid=Math.random().toString(36).slice(2)+Date.now().toString(36))}catch(e){pid=Math.random().toString(36).slice(2)}
 try{$('name').value=localStorage.name||''}catch(e){}
+{const c=new URLSearchParams(location.search).get('sala');if(c)$('code').value=c.toUpperCase().slice(0,4)} // link de convite já preenche o código
 const sock=io(); let st=null;
 sock.on('connect',()=>sock.emit('hello',{pid}));
 sock.on('state',s=>{st=s;if(s&&s.msg&&s.msg.id!==lastMsg){if(lastMsg!==null||Date.now()-s.msg.id<5000)toast(s.msg.text);lastMsg=s.msg.id}render();rtcSync()});
@@ -131,7 +134,7 @@ $('next').onclick=()=>sock.emit('next');
 $('acc').onclick=$('acc2').onclick=()=>{if(confirm('Acusar a outra dupla de renúncia?\nSe errar, eles ganham 1 jogo.'))sock.emit('accuse')};
 let lastMsg=null;
 $('leave1').onclick=$('leave2').onclick=()=>{if(confirm('Sair da sala?'))sock.emit('leave')};
-$('share').onclick=()=>{const t=`Bora jogar Sueca! Código da sala: ${st.code}`;
+$('share').onclick=$('gcode').onclick=()=>{const t=`Bora jogar Sueca! Código da sala: ${st.code}\n${location.origin}/?sala=${st.code}`;
   if(navigator.share)navigator.share({text:t}).catch(()=>{});else navigator.clipboard.writeText(t).then(()=>toast('Código copiado'))};
 document.addEventListener('click',e=>{
   const t=e.target.closest('[data-sit],[data-bot],#hand .card');if(!t)return;
@@ -197,6 +200,7 @@ function renderLobby(){
 }
 function renderGame(){
   const me=st.me,my=me%2;
+  $('gcode').textContent='🔗 Sala '+st.code;
   $('score').innerHTML=`<div class="cz">Nós ${cruz(st.games[my])}${cruz(st.games[1-my])} Eles</div><small style="display:block;opacity:.75;text-align:center">Partidas ${st.matches[my]} × ${st.matches[1-my]}${st.mult>1?` · <b style="color:#f4c542;font-size:13px">mão vale x${st.mult}</b>`:''}</small>`;
   $('trump').innerHTML=`<div><small>Trunfo<br>${esc(st.seats[st.dealer].name)}</small></div>`+card(st.trumpCard,'mini');
   for(let i=0;i<4;i++){
