@@ -1,6 +1,8 @@
 {
-  "appId": "com.amigos.sueca",
-  "appName": "Sueca",
+  "appId": "com.tcb.cartas",
+  "appName": "TCB Cartas",
   "webDir": "public",
-  "server": { "url": "https://sueca-fam-lia-cunha.onrender.com" }
+  "server": {
+    "url": "https://sueca-fam-lia-cunha.onrender.com"
+  }
 }
