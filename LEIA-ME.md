@@ -22,6 +22,15 @@ Jogo de Sueca online e fechado: só entra quem tem o código da sala (4 letras).
 - Mineiro: mão vale 2; Truco 4, Seis 6, Dez 10, Doze 12. Manilhas fixas: 4♣ > 7♥ > A♠ > 7♦. Mão de dez igual à mão de onze.
 - Cangou (empate na vaza): vale a regra comum, quem ganhou a primeira leva; se a primeira cangou, a seguinte decide.
 
+## Pife (2 a 4 jogadores)
+- Dois baralhos, 9 cartas. Na vez: toque no Monte ou no Lixo para comprar, depois toque numa carta para descartar.
+- Quando der para fechar as 9 cartas em jogos (trincas de naipes diferentes ou sequências do mesmo naipe; Ás vale A-2-3 ou Q-K-A), aparece o botão **🏆 Bater!**.
+
+## Burro (2 a 4 jogadores)
+- 5 cartas para cada um. Quem começa joga qualquer carta; os outros seguem o naipe.
+- Quem não tem o naipe toca em **Comprar do monte** até conseguir. A maior do naipe leva e começa a próxima.
+- Quem fica sem cartas sai; o último com cartas é o **burro** 🫏.
+
 ## Câmera e voz
 - Toque em 📷 para ligar a câmera e o microfone. A sua imagem aparece no canto de baixo e a dos amigos aparece perto dos nomes deles.
 - 🎤 liga e desliga o microfone. 🚫📷 desliga tudo.

@@ -82,6 +82,10 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
 .gr{display:flex;gap:6px}.gr button{width:auto;margin:0;padding:6px 10px;font-size:14px}
 #tbar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;align-items:center}#tbar:empty{display:none}
 #tbar button{width:auto;padding:10px 16px;margin:4px 0}#tbar .red{background:#d84343;color:#fff}#tbar .card{width:44px;height:64px;font-size:16px;padding:4px 5px}#tbar .card i{font-size:20px}
+.card.back{background:repeating-linear-gradient(45deg,#b3262c 0 6px,#8e1d22 6px 12px);border:3px solid #fff}
+.pile{position:absolute;top:50%;transform:translateY(-50%);text-align:center;font-size:13px}.pile small{display:block;margin-top:6px;opacity:.85}
+.pst{left:6%}.pds{right:6%}.pile .card.ok{transform:none}
+.melds{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:8px 0}.mg{display:flex;gap:2px}
 #toast{z-index:9;max-width:90vw;text-align:center}
 /* ---------- Tela larga (computador / tablet deitado) ---------- */
 @media (min-width:900px) and (min-aspect-ratio:5/4){
@@ -118,7 +122,7 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
   <div id="lcode"></div>
   <div id="lgame" class="sub" style="margin:0;font-weight:700;opacity:1"></div>
   <button id="share" class="ghost">Compartilhar código</button>
-  <div class="sub" style="margin:10px 0 0">Duplas: lugares 1 e 3 contra 2 e 4</div>
+  <div id="lduo" class="sub" style="margin:10px 0 0">Duplas: lugares 1 e 3 contra 2 e 4</div>
   <div id="seats"></div>
   <div id="lspec" class="sub" style="margin:6px 0 0"></div>
   <div style="flex:1"></div>
@@ -170,7 +174,7 @@ sock.on('err',toast);
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t.h);t.h=setTimeout(()=>t.classList.remove('on'),3500)}
 function nm(){const n=$('name').value.trim();if(!n){toast('Digite seu nome');return null}try{localStorage.name=n}catch(e){}return n}
 function show(id){for(const x of['home','lobby','game'])$(x).hidden=x!==id}
-function card(c,cls=''){return `<div class="card ${'hd'.includes(c[1])?'red':''} ${cls}" data-c="${c}"><b>${c[0]}</b><i>${SY[c[1]]}</i></div>`}
+function card(c,cls=''){return `<div class="card ${'hd'.includes(c[1])?'red':''} ${cls}" data-c="${c}"><b>${c[0]==='T'?'10':c[0]}</b><i>${SY[c[1]]}</i></div>`}
 
 // ---------- Escolha do jogo, com um desenho para cada ----------
 function mc(x,y,rot,r,su,back){ // carta pequena desenhada em SVG
@@ -187,8 +191,9 @@ const ICON={
   burro:`<svg viewBox="0 0 80 64"><path d="M27 20 L22 2 L33 15 Z M53 20 L58 2 L47 15 Z" fill="#8d8d8d" stroke="#222" stroke-width=".8"/>${mc(40,40,0,'','s',1)}<circle cx="34" cy="36" r="2" fill="#fff"/><circle cx="46" cy="36" r="2" fill="#fff"/></svg>`,
 };
 const GLIST=[['sueca','Sueca','4 jogadores'],['truco_p','Truco','Paulista','SP'],['truco_m','Truco','Mineiro','MG'],
-  ['buraco','Buraco','em breve',0,1],['pife','Pife','em breve',0,1],['burro','Burro','em breve',0,1]];
-const GNAME={sueca:'Sueca',truco_p:'Truco Paulista',truco_m:'Truco Mineiro'};
+  ['buraco','Buraco','em breve',0,1],['pife','Pife','2 a 4'],['burro','Burro','2 a 4']];
+const GNAME={sueca:'Sueca',truco_p:'Truco Paulista',truco_m:'Truco Mineiro',pife:'Pife',burro:'Burro'};
+const FLEX={pife:1,burro:1};let byVal=false;
 let selGame='sueca';try{if(GNAME[localStorage.game])selGame=localStorage.game}catch(e){}
 function drawGames(){$('gsel').innerHTML=GLIST.map(([id,n,sub,tag,soon])=>`<div class="gt${id===selGame?' sel':''}${soon?' soon':''}" data-g="${soon?'':id}">${tag?`<span class="tag">${tag}</span>`:''}${ICON[id]}${n}<small>${sub}</small></div>`).join('')}
 drawGames();
@@ -205,7 +210,8 @@ $('leave1').onclick=$('leave2').onclick=()=>{if(confirm('Sair da sala?'))sock.em
 $('share').onclick=$('gcode').onclick=()=>{const t=`Bora jogar Sueca! Código da sala: ${st.code}\n${location.origin}/?sala=${st.code}`;
   if(navigator.share)navigator.share({text:t}).catch(()=>{});else navigator.clipboard.writeText(t).then(()=>toast('Código copiado'))};
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-sit],[data-bot],[data-a],#hand .card');if(!t)return;
+  const t=e.target.closest('[data-sit],[data-bot],[data-a],[data-local],#hand .card');if(!t)return;
+  if(t.dataset.local){byVal=!byVal;return render()}
   if(t.dataset.a){const [type,ans]=t.dataset.a.split(':');return sock.emit('act',{type,ans})}
   if(!t.dataset.sit&&!t.dataset.bot&&st.game!=='sueca'){if(st.canPlay)sock.emit('play',{card:t.dataset.c});return}
   if(t.dataset.sit)sock.emit('sit',{seat:+t.dataset.sit});
@@ -275,10 +281,12 @@ function cruz(n){ // placar em cruz: uma bolinha em cada canto por ponto
 function render(){
   if(!st)return show('home');
   if(st.phase==='lobby')return renderLobby();
-  show('game');if(st.game!=='sueca')return renderTruco();$('tbar').innerHTML='';renderGame();
+  show('game');for(const p of POS)$('p-'+p).style.display='';
+  if(st.game==='pife')return renderPife();if(st.game==='burro')return renderBurro();if(st.game!=='sueca')return renderTruco();$('tbar').innerHTML='';renderGame();
 }
 function renderLobby(){
-  show('lobby');$('lcode').textContent=st.code;$('lgame').innerHTML=(ICON[st.game]||'')+(GNAME[st.game]||'');$('ov').hidden=true;
+  show('lobby');$('lcode').textContent=st.code;$('lgame').innerHTML=(ICON[st.game]||'')+(GNAME[st.game]||'');$('lduo').textContent=FLEX[st.game]?'Cada um por si · de 2 a 4 jogadores':'Duplas: lugares 1 e 3 contra 2 e 4';
+  $('start').textContent=FLEX[st.game]?'Começar':'Começar (vagas viram bots)';$('ov').hidden=true;
   $('seats').innerHTML=st.seats.map((s,i)=>`<div class="seat t${i%2}">
     <small>${i%2?'Dupla B':'Dupla A'} · lugar ${i+1}</small>
     <span>${s?(s.bot?'🤖 ':'')+esc(s.name)+(i===st.me?' (você)':''):'— vazio —'}</span>
@@ -286,6 +294,58 @@ function renderLobby(){
     ${st.host&&(!s||s.bot)?`<button class="ghost sm" data-bot="${i}">${s?'Tirar bot':'+ Bot'}</button>`:''}</div></div>`).join('');
   $('lspec').textContent=st.specs.length?'👀 Assistindo: '+st.specs.map(x=>x.name).join(', '):'';
   $('start').hidden=!st.host;$('wait').hidden=st.host;
+}
+// ---------- Pife e Burro (cada um por si, 2 a 4) ----------
+function soloBase(){
+  const sp=st.me<0,me=sp?Math.max(0,st.seats.findIndex(Boolean)):st.me,nm=i=>esc(st.seats[i].name);
+  $('gnum').textContent=st.code+(st.specs.length?` · 👀${st.specs.length}`:'');
+  $('sitbot').hidden=!(sp&&st.seats.some(s=>s&&s.bot));$('acc').hidden=$('acc2').hidden=true;
+  for(let i=0;i<4;i++){
+    const rel=(i-me+4)%4,el=$('p-'+POS[rel]),s=st.seats[i];
+    if(!s){el.style.display='none';continue}
+    const done=st.out&&st.out.includes(i);
+    el.className='pl '+POS[rel]+(sp&&!rel?' show':'')+(st.turn===i&&st.phase==='play'?' turn':'');
+    el.innerHTML=`${s.bot?'🤖 ':''}${esc(s.name)}${s.online?'':' 💤'}<small>${done?'✓ saiu':st.counts[i]+' cartas'}</small>`;
+  }
+  return {sp,me,nm};
+}
+function handUI(cls){
+  const h=byVal?[...st.hand].sort((a,b)=>'A23456789TJQK'.indexOf(a[0])-'A23456789TJQK'.indexOf(b[0])):st.hand;
+  $('hand').innerHTML=h.map(c=>card(c,cls(c))).join('');
+  const cs=[...$('hand').children],n=cs.length,av=$('hand').clientWidth-8,W=cs.length?cs[0].offsetWidth:66,ml=n>1?Math.min(6,(av-n*W)/(n-1)):0;cs.forEach((c,i)=>c.style.marginLeft=i?ml+'px':'0');
+}
+const sortBtn=()=>`<button class="ghost" data-local="sort">↕ ${byVal?'Por naipe':'Por número'}</button>`;
+function renderPife(){
+  const {sp,me,nm}=soloBase();
+  $('score').innerHTML=`<div style="font-weight:700">Pife</div><small style="opacity:.8">Vitórias: ${st.seats.map((s,i)=>s?`${esc(s.name)} ${st.wins[i]}`:'').filter(Boolean).join(' · ')}</small>`;
+  $('trump').innerHTML='';
+  const tr=$('trick');tr.className='';$('tpts').hidden=true;
+  const dc=(c,a)=>card(c,st.canDraw?'ok':'').replace('<div class="','<div data-a="'+a+'" class="');
+  tr.innerHTML=`<div class="pile pst"><div class="card back${st.canDraw?' ok':''}" data-a="draw:stock"></div><small>Monte (${st.stock})</small></div>`+
+    `<div class="pile pds">${st.top?dc(st.top,'draw:discard'):'<div class="card" style="opacity:.2"></div>'}<small>Lixo</small></div>`;
+  handUI(()=>st.canPlay?'ok':'');
+  $('status').textContent=sp?'👀 Você está assistindo':st.phase!=='play'?'':st.canDraw?'Sua vez: compre do monte ou pegue do lixo':st.canPlay?'Agora descarte uma carta':`Vez de ${st.seats[st.turn].name}`;
+  $('tbar').innerHTML=(st.canBeat?'<button class="red" data-a="beat">🏆 Bater!</button>':'')+(sp?'':sortBtn());
+  const r=st.result,over=st.phase==='handEnd';$('ov').hidden=!over;
+  if(over&&r){$('ovt').textContent=r.seat===st.me?'🏆 Você bateu!':`🏆 ${st.seats[r.seat].name} bateu!`;
+    $('ovp').innerHTML=`<div class="melds">${r.melds.map(g=>'<div class="mg">'+g.map(c=>card(c,'mini')).join('')+'</div>').join('')}</div><small>Descartou ${card(r.discard,'mini')}</small>`;
+    $('next').textContent='Próxima rodada'}
+}
+function renderBurro(){
+  const {sp,me,nm}=soloBase();
+  $('score').innerHTML=`<div style="font-weight:700">Burro 🫏</div><small style="opacity:.8">Burros: ${st.seats.map((s,i)=>s?`${esc(s.name)} ${st.burros[i]}`:'').filter(Boolean).join(' · ')}</small>`;
+  $('trump').innerHTML=`<div><small>Monte<br><b style="font-size:16px">${st.stock}</b></small></div>`;
+  const tr=$('trick');tr.className='';clearTimeout(tr.h);
+  tr.innerHTML=st.trick.map(t=>card(t.card,'tk '+POS[(t.seat-me+4)%4]+(t.seat===st.win?' win':''))).join('');
+  const tp=$('tpts');tp.hidden=st.win==null;if(st.win!=null){tp.textContent=`Leva: ${st.seats[st.win].name}`;tr.h=setTimeout(()=>tr.className='go-'+POS[(st.win-me+4)%4],1300)}
+  const lead=st.trick.length?st.trick[0].card[1]:null;
+  handUI(c=>st.canPlay?(st.legal.includes(c)?'ok':'no'):'');
+  $('status').textContent=sp?'👀 Você está assistindo':st.phase!=='play'?'':st.mustDraw?`Você não tem ${SY[lead]}: compre do monte`:st.canPlay?(lead?`Sua vez! Siga ${SY[lead]}`:'Sua vez! Jogue qualquer carta'):st.hand.length||st.me<0?`Vez de ${st.seats[st.turn].name}`:'✓ Você saiu! Aguarde o fim';
+  $('tbar').innerHTML=(st.mustDraw?'<button class="red" data-a="draw">🂠 Comprar do monte</button>':'')+(sp||!st.hand.length?'':sortBtn());
+  const r=st.result,over=st.phase==='handEnd';$('ov').hidden=!over;
+  if(over&&r){$('ovt').textContent=r.burro===st.me?'🫏 Você é o burro!':`🫏 ${st.seats[r.burro].name} é o burro!`;
+    $('ovp').textContent=r.out.length?'Saíram: '+r.out.map((i,k)=>`${k+1}º ${st.seats[i].name}`).join(', '):'';
+    $('next').textContent='Próxima rodada'}
 }
 function renderTruco(){
   const sp=st.me<0,me=sp?0:st.me,my=me%2,NOS=sp?'Dupla A':'Nós',ELES=sp?'Dupla B':'Eles',TEAM=k=>k===my?NOS:ELES;
