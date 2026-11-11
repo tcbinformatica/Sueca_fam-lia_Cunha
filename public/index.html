@@ -12,9 +12,14 @@ html,body{margin:0;height:100%}
 body{font-family:system-ui,-apple-system,Roboto,sans-serif;color:#fff;background:radial-gradient(circle at 50% 40%,#13784a,#0b4d2f 75%);overflow:hidden;user-select:none}
 [hidden]{display:none!important}
 .screen{height:100dvh;display:flex;flex-direction:column;padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom)}
-h1{font-size:44px;margin:12vh 0 4px;text-align:center;letter-spacing:2px}
+h1{font-size:40px;margin:5vh 0 4px;text-align:center;letter-spacing:2px}
 .sub{text-align:center;opacity:.8;margin-bottom:28px}
-select{width:100%;padding:14px;font-size:18px;border-radius:12px;border:0;margin:6px 0;color:#111;background:#fff}
+.games{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+.gt{background:rgba(0,0,0,.25);border:2px solid transparent;border-radius:14px;padding:8px 2px 6px;text-align:center;font-size:13px;font-weight:700;position:relative}
+.gt svg{width:72px;height:60px;display:block;margin:0 auto 2px}.gt small{display:block;font-weight:400;opacity:.7;font-size:11px}
+.gt.sel{border-color:#f4c542;background:rgba(244,197,66,.18)}.gt.soon{opacity:.45}
+.gt .tag{position:absolute;top:4px;right:6px;background:#f4c542;color:#222;font-size:10px;padding:1px 5px;border-radius:6px}
+#lgame svg{width:72px;height:60px;display:block;margin:4px auto 0}
 input{width:100%;padding:14px;font-size:18px;border-radius:12px;border:0;margin:6px 0;color:#111}
 button{padding:14px;font-size:17px;font-weight:700;border-radius:12px;border:0;background:#f4c542;color:#222;width:100%;margin:6px 0}
 button.ghost{background:rgba(255,255,255,.15);color:#fff}
@@ -83,7 +88,7 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
   <h1>♠ TCB Cartas ♥</h1>
   <div class="sub">Família Cunha</div>
   <input id="name" placeholder="Seu nome" maxlength="14">
-  <select id="gsel"><option value="sueca">Sueca</option><option value="truco_p">Truco Paulista</option><option value="truco_m">Truco Mineiro</option></select>
+  <div id="gsel" class="games"></div>
   <button id="create">Criar sala</button>
   <div class="or">ou entre com o código</div>
   <div class="row"><input id="code" placeholder="CÓDIGO" maxlength="4" style="text-transform:uppercase"><button id="join" style="width:40%">Entrar</button></div>
@@ -149,9 +154,28 @@ function nm(){const n=$('name').value.trim();if(!n){toast('Digite seu nome');ret
 function show(id){for(const x of['home','lobby','game'])$(x).hidden=x!==id}
 function card(c,cls=''){return `<div class="card ${'hd'.includes(c[1])?'red':''} ${cls}" data-c="${c}"><b>${c[0]}</b><i>${SY[c[1]]}</i></div>`}
 
-try{if(localStorage.game)$('gsel').value=localStorage.game}catch(e){}
+// ---------- Escolha do jogo, com um desenho para cada ----------
+function mc(x,y,rot,r,su,back){ // carta pequena desenhada em SVG
+  const red='hd'.includes(su),S={h:'♥',d:'♦',s:'♠',c:'♣'}[su];
+  return `<g transform="translate(${x} ${y}) rotate(${rot})"><rect x="-13" y="-19" width="26" height="38" rx="3.5" fill="${back?'#b3262c':'#fff'}" stroke="#222" stroke-width=".8"/>`+
+    (back?`<rect x="-10" y="-16" width="20" height="32" rx="2" fill="none" stroke="#f4c542" stroke-width="1"/><path d="M-10 -16 L10 16 M10 -16 L-10 16" stroke="#f4c542" stroke-width=".6"/>`
+    :`<text x="-10" y="-9" font-size="9" font-weight="700" fill="${red?'#c62828':'#111'}" font-family="Arial">${r}</text><text x="0" y="11" font-size="17" text-anchor="middle" fill="${red?'#c62828':'#111'}">${S}</text>`)+`</g>`}
+const ICON={
+  sueca:`<svg viewBox="0 0 80 64">${mc(30,34,-14,'A','s')}${mc(50,34,14,'7','h')}</svg>`,
+  truco_p:`<svg viewBox="0 0 80 64">${mc(24,38,-20,'3','d')}${mc(40,32,0,'2','s')}${mc(56,38,20,'4','c')}</svg>`,
+  truco_m:`<svg viewBox="0 0 80 64">${mc(24,38,-20,'A','s')}${mc(40,32,0,'7','h')}${mc(56,38,20,'4','c')}</svg>`,
+  buraco:`<svg viewBox="0 0 80 64">${mc(19,34,0,'4','h')}${mc(33,34,0,'5','h')}${mc(47,34,0,'6','h')}${mc(61,34,0,'7','h')}</svg>`,
+  pife:`<svg viewBox="0 0 80 64">${mc(26,36,-10,'K','c')}${mc(40,32,0,'K','d')}${mc(54,36,10,'K','s')}</svg>`,
+  burro:`<svg viewBox="0 0 80 64"><path d="M27 20 L22 2 L33 15 Z M53 20 L58 2 L47 15 Z" fill="#8d8d8d" stroke="#222" stroke-width=".8"/>${mc(40,40,0,'','s',1)}<circle cx="34" cy="36" r="2" fill="#fff"/><circle cx="46" cy="36" r="2" fill="#fff"/></svg>`,
+};
+const GLIST=[['sueca','Sueca','4 jogadores'],['truco_p','Truco','Paulista','SP'],['truco_m','Truco','Mineiro','MG'],
+  ['buraco','Buraco','em breve',0,1],['pife','Pife','em breve',0,1],['burro','Burro','em breve',0,1]];
 const GNAME={sueca:'Sueca',truco_p:'Truco Paulista',truco_m:'Truco Mineiro'};
-$('create').onclick=()=>{const n=nm(),g=$('gsel').value;try{localStorage.game=g}catch(e){}n&&sock.emit('create',{name:n,game:g})};
+let selGame='sueca';try{if(GNAME[localStorage.game])selGame=localStorage.game}catch(e){}
+function drawGames(){$('gsel').innerHTML=GLIST.map(([id,n,sub,tag,soon])=>`<div class="gt${id===selGame?' sel':''}${soon?' soon':''}" data-g="${soon?'':id}">${tag?`<span class="tag">${tag}</span>`:''}${ICON[id]}${n}<small>${sub}</small></div>`).join('')}
+drawGames();
+$('gsel').onclick=e=>{const t=e.target.closest('[data-g]');if(!t)return;if(!t.dataset.g)return toast('Esse jogo chega em breve!');selGame=t.dataset.g;try{localStorage.game=selGame}catch(e){}drawGames()};
+$('create').onclick=()=>{const n=nm();n&&sock.emit('create',{name:n,game:selGame})};
 $('join').onclick=()=>{const n=nm();n&&sock.emit('join',{name:n,code:$('code').value})};
 $('watch').onclick=()=>{const n=nm();n&&sock.emit('join',{name:n,code:$('code').value,watch:true})};
 $('sitbot').onclick=()=>{const i=st.seats.findIndex(s=>s&&s.bot);if(i>=0)sock.emit('sit',{seat:i})};
@@ -236,7 +260,7 @@ function render(){
   show('game');if(st.game!=='sueca')return renderTruco();$('tbar').innerHTML='';renderGame();
 }
 function renderLobby(){
-  show('lobby');$('lcode').textContent=st.code;$('lgame').textContent=GNAME[st.game]||'';$('ov').hidden=true;
+  show('lobby');$('lcode').textContent=st.code;$('lgame').innerHTML=(ICON[st.game]||'')+(GNAME[st.game]||'');$('ov').hidden=true;
   $('seats').innerHTML=st.seats.map((s,i)=>`<div class="seat t${i%2}">
     <small>${i%2?'Dupla B':'Dupla A'} · lugar ${i+1}</small>
     <span>${s?(s.bot?'🤖 ':'')+esc(s.name)+(i===st.me?' (você)':''):'— vazio —'}</span>
