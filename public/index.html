@@ -37,6 +37,7 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
 .pl.turn{background:#f4c542;color:#222}
 .pl.top{top:6px;left:50%;transform:translateX(-50%)}
 .pl.left{left:0;top:17%}.pl.right{right:0;top:17%}.pl.bottom{display:none}.pl.bottom.show{display:block;bottom:96px;left:50%;transform:translateX(-50%)}
+#tpts{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);background:#f4c542;color:#222;font-weight:800;font-size:18px;padding:6px 14px;border-radius:20px;z-index:4;pointer-events:none}
 #logo{position:absolute;left:50%;top:56%;width:min(250px,64vw);transform:translate(-50%,-50%);opacity:.22;pointer-events:none}
 #trick{position:absolute;left:50%;top:56%;width:min(250px,64vw);height:min(280px,50%);transform:translate(-50%,-50%)}
 #trick[class*=go]{transition:transform 1.1s ease-in,opacity 1.1s ease-in;opacity:0}
@@ -111,6 +112,7 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
       <text x="100" y="114" font-family="Georgia,serif" font-size="40" font-weight="700" fill="#fff" text-anchor="middle">Cunha</text>
     </svg>
     <div id="trick"></div>
+    <div id="tpts" hidden></div>
     <video id="v-top" class="vid" autoplay playsinline></video><video id="v-left" class="vid" autoplay playsinline></video>
     <video id="v-right" class="vid" autoplay playsinline></video><video id="v-bottom" class="vid" autoplay playsinline muted></video>
     <div id="gbox"><div>Sala<b id="gnum"></b></div><div class="gr"><button id="gcode" class="ghost">📤 Enviar link</button><button id="cam" class="ghost">📷</button><button id="mic" class="ghost" hidden>🎤</button><button id="sitbot" hidden>🪑 Jogar</button></div></div>
@@ -234,7 +236,7 @@ function renderGame(){
   const sp=st.me<0,me=sp?0:st.me,my=me%2,NOS=sp?'Dupla A':'Nós',ELES=sp?'Dupla B':'Eles';
   $('gnum').textContent=st.code+(st.specs.length?` · 👀${st.specs.length}`:'');
   $('sitbot').hidden=!(sp&&st.seats.some(s=>s&&s.bot));
-  $('score').innerHTML=`<div class="cz">${NOS} ${cruz(st.games[my])}${cruz(st.games[1-my])} ${ELES}</div><small style="display:block;opacity:.75;text-align:center">Partidas ${st.matches[my]} × ${st.matches[1-my]}${st.mult>1?` · <b style="color:#f4c542;font-size:13px">mão vale x${st.mult}</b>`:''}</small>`;
+  $('score').innerHTML=`<div class="cz">${NOS} ${cruz(st.games[my])}${cruz(st.games[1-my])} ${ELES}</div><small style="display:block;opacity:.75;text-align:center">Pontos <b style="font-size:15px">${st.pts[my]} × ${st.pts[1-my]}</b> · Partidas ${st.matches[my]} × ${st.matches[1-my]}${st.mult>1?` · <b style="color:#f4c542;font-size:13px">mão vale x${st.mult}</b>`:''}</small>`;
   $('trump').innerHTML=`<div><small>Trunfo<br>${esc(st.seats[st.dealer].name)}</small></div>`+card(st.trumpCard,'mini');
   for(let i=0;i<4;i++){
     const rel=(i-me+4)%4,el=$('p-'+POS[rel]),s=st.seats[i];
@@ -243,6 +245,8 @@ function renderGame(){
   }
   const tr=$('trick');tr.className='';clearTimeout(tr.h);
   tr.innerHTML=st.trick.map(t=>card(t.card,'tk '+POS[(t.seat-me+4)%4]+(t.seat===st.win?' win':''))).join('');
+  {const P={A:11,'7':10,K:4,J:3,Q:2},n=st.trick.reduce((a,t)=>a+(P[t.card[0]]||0),0),tp=$('tpts'); // valor da vaza
+   tp.hidden=st.win==null;if(st.win!=null)tp.textContent=`+${n} para ${st.win%2===my?NOS:ELES}`}
   if(st.win!=null)tr.h=setTimeout(()=>tr.className='go-'+POS[(st.win-me+4)%4],1900); // deixa ver a vaza e depois leva para quem ganhou
   $('hand').innerHTML=st.hand.map(c=>card(c,st.legal.length?'ok':'')).join('');
   {const cs=[...$('hand').children],n=cs.length,av=$('hand').clientWidth-8,ml=n>1?Math.min(4,(av-n*66)/(n-1)):0;cs.forEach((c,i)=>c.style.marginLeft=i?ml+'px':'0')}

@@ -152,7 +152,7 @@ function view(r, pid) {
     canAccuse: me >= 0 && (r.phase === 'play' || r.phase === 'handEnd') && !r.judged && !r.falseAcc[me % 2],
     msg: r.msg,
     trump: r.trump, trumpCard: r.trumpCard, dealer: r.dealer, turn: r.turn,
-    trick: r.trick, win: r.pause ? r.win : null, mult: r.mult, games: r.games, matches: r.matches, result: r.result,
+    trick: r.trick, pts: r.pts, win: r.pause ? r.win : null, mult: r.mult, games: r.games, matches: r.matches, result: r.result,
   };
 }
 function push(r) {
