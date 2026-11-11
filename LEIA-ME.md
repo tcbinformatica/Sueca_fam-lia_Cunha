@@ -31,6 +31,12 @@ Jogo de Sueca online e fechado: só entra quem tem o código da sala (4 letras).
 - Quem não tem o naipe toca em **Comprar do monte** até conseguir. A maior do naipe leva e começa a próxima.
 - Quem fica sem cartas sai; o último com cartas é o **burro** 🫏.
 
+## Buraco fechado (duplas)
+- 2 baralhos, 11 cartas, um morto de 11 para cada dupla. Partida até 3000.
+- Na vez: toque no Monte para comprar. Para pegar o lixo, selecione as cartas da mão que formam jogo com a carta de cima e toque no lixo (vem o lixo inteiro).
+- Toque nas cartas para selecionar: com 3 ou mais, **Baixar jogo**; com elas selecionadas, toque num jogo da sua dupla para juntar; com 1, **Descartar**.
+- Só sequências do mesmo naipe; o 2 é curinga (1 por jogo). Canastra (7+): limpa 200, suja 100. Bate só com canastra limpa (+100). Quem não pegou o morto perde 100.
+
 ## Câmera e voz
 - Toque em 📷 para ligar a câmera e o microfone. A sua imagem aparece no canto de baixo e a dos amigos aparece perto dos nomes deles.
 - 🎤 liga e desliga o microfone. 🚫📷 desliga tudo.

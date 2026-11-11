@@ -60,7 +60,7 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
 .tk.right{right:0;top:50%;transform:translateY(-50%)}
 #status{text-align:center;height:22px;font-weight:700}
 #hand{display:flex;justify-content:center;padding:14px 0 10px;min-height:124px}
-#hand .card{flex-shrink:0;transition:transform .15s}
+#hand .card{flex-shrink:0;transition:transform .15s;position:relative}
 .card{width:66px;height:96px;background:#fff;color:#111;border-radius:8px;display:inline-flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;padding:7px 8px;font-weight:800;font-size:24px;box-shadow:0 2px 6px rgba(0,0,0,.45);line-height:1}
 .card i{font-style:normal;font-size:30px;margin-top:2px}
 .card.red{color:#c62828}
@@ -86,6 +86,15 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
 .pile{position:absolute;top:50%;transform:translateY(-50%);text-align:center;font-size:13px}.pile small{display:block;margin-top:6px;opacity:.85}
 .pst{left:6%}.pds{right:6%}.pile .card.ok{transform:none}
 .melds{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:8px 0}.mg{display:flex;gap:2px}
+.mrow{position:absolute;left:4px;right:4px;display:flex;flex-wrap:wrap;gap:6px 8px;align-content:flex-start;overflow-y:auto}
+.mrow.them{top:52px;height:24%}.mrow.us{bottom:96px;height:26%;align-content:flex-end}
+.meld{display:flex;padding:3px;border-radius:6px;background:rgba(0,0,0,.18)}.meld .card{margin-left:-13px;align-items:flex-start;justify-content:flex-start;padding:2px 3px;font-size:12px}.meld .card i{font-size:12px;margin:1px 0 0}.meld .card:first-child{margin-left:0}
+.meld.can{outline:2px dashed #f4c542}.meld.cl{background:rgba(244,197,66,.35)}.meld.cs{background:rgba(200,200,200,.3)}
+.bpiles{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;gap:18px;align-items:center;font-size:12px;text-align:center}
+.bpiles small{display:block;margin-top:4px;opacity:.85}
+#table.bur .pl.left,#table.bur .pl.right{top:auto;bottom:44%}#table.bur #logo{opacity:.1}
+.card.mini2{width:52px;height:76px;font-size:19px;padding:5px 6px}.card.mini2 i{font-size:23px}
+#hand .card.sel{transform:translateY(-16px);box-shadow:0 0 0 3px #6ec6ff}
 #toast{z-index:9;max-width:90vw;text-align:center}
 /* ---------- Tela larga (computador / tablet deitado) ---------- */
 @media (min-width:900px) and (min-aspect-ratio:5/4){
@@ -191,8 +200,9 @@ const ICON={
   burro:`<svg viewBox="0 0 80 64"><path d="M27 20 L22 2 L33 15 Z M53 20 L58 2 L47 15 Z" fill="#8d8d8d" stroke="#222" stroke-width=".8"/>${mc(40,40,0,'','s',1)}<circle cx="34" cy="36" r="2" fill="#fff"/><circle cx="46" cy="36" r="2" fill="#fff"/></svg>`,
 };
 const GLIST=[['sueca','Sueca','4 jogadores'],['truco_p','Truco','Paulista','SP'],['truco_m','Truco','Mineiro','MG'],
-  ['buraco','Buraco','em breve',0,1],['pife','Pife','2 a 4'],['burro','Burro','2 a 4']];
-const GNAME={sueca:'Sueca',truco_p:'Truco Paulista',truco_m:'Truco Mineiro',pife:'Pife',burro:'Burro'};
+  ['buraco','Buraco','fechado · duplas'],['pife','Pife','2 a 4'],['burro','Burro','2 a 4']];
+const GNAME={sueca:'Sueca',truco_p:'Truco Paulista',truco_m:'Truco Mineiro',pife:'Pife',burro:'Burro',buraco:'Buraco'};
+const bsel=new Set();
 const FLEX={pife:1,burro:1};let byVal=false;
 let selGame='sueca';try{if(GNAME[localStorage.game])selGame=localStorage.game}catch(e){}
 function drawGames(){$('gsel').innerHTML=GLIST.map(([id,n,sub,tag,soon])=>`<div class="gt${id===selGame?' sel':''}${soon?' soon':''}" data-g="${soon?'':id}">${tag?`<span class="tag">${tag}</span>`:''}${ICON[id]}${n}<small>${sub}</small></div>`).join('')}
@@ -212,6 +222,13 @@ $('share').onclick=$('gcode').onclick=()=>{const t=`Bora jogar Sueca! Código da
 document.addEventListener('click',e=>{
   const t=e.target.closest('[data-sit],[data-bot],[data-a],[data-local],#hand .card');if(!t)return;
   if(t.dataset.local){byVal=!byVal;return render()}
+  if(st&&st.game==='buraco'){
+    if(t.dataset.a){const a=t.dataset.a,cs=[...bsel];bsel.clear();
+      if(a==='draw:stock')sock.emit('act',{type:'draw'});else if(a==='take')sock.emit('act',{type:'take',cards:cs});
+      else if(a==='meld')sock.emit('act',{type:'meld',cards:cs});else if(a==='add')sock.emit('act',{type:'add',meld:+t.dataset.k,cards:cs});
+      else if(a==='disc')sock.emit('act',{type:'play',card:cs[0]});return render()}
+    if(t.dataset.c&&t.closest('#hand')){const c=t.dataset.c;bsel.has(c)?bsel.delete(c):bsel.add(c);return render()}
+    return}
   if(t.dataset.a){const [type,ans]=t.dataset.a.split(':');return sock.emit('act',{type,ans})}
   if(!t.dataset.sit&&!t.dataset.bot&&st.game!=='sueca'){if(st.canPlay)sock.emit('play',{card:t.dataset.c});return}
   if(t.dataset.sit)sock.emit('sit',{seat:+t.dataset.sit});
@@ -281,7 +298,8 @@ function cruz(n){ // placar em cruz: uma bolinha em cada canto por ponto
 function render(){
   if(!st)return show('home');
   if(st.phase==='lobby')return renderLobby();
-  show('game');for(const p of POS)$('p-'+p).style.display='';
+  show('game');for(const p of POS)$('p-'+p).style.display='';$('table').classList.toggle('bur',st.game==='buraco');document.querySelectorAll('.mrow').forEach(x=>x.remove());
+  if(st.game==='buraco')return renderBuraco();
   if(st.game==='pife')return renderPife();if(st.game==='burro')return renderBurro();if(st.game!=='sueca')return renderTruco();$('tbar').innerHTML='';renderGame();
 }
 function renderLobby(){
@@ -312,9 +330,40 @@ function soloBase(){
 function handUI(cls){
   const h=byVal?[...st.hand].sort((a,b)=>'A23456789TJQK'.indexOf(a[0])-'A23456789TJQK'.indexOf(b[0])):st.hand;
   $('hand').innerHTML=h.map(c=>card(c,cls(c))).join('');
-  const cs=[...$('hand').children],n=cs.length,av=$('hand').clientWidth-8,W=cs.length?cs[0].offsetWidth:66,ml=n>1?Math.min(6,(av-n*W)/(n-1)):0;cs.forEach((c,i)=>c.style.marginLeft=i?ml+'px':'0');
+  const cs=[...$('hand').children],n=cs.length,av=$('hand').clientWidth-8,W=cs.length?cs[0].offsetWidth:66,ml=n>1?Math.min(6,(av-n*W)/(n-1)):0;cs.forEach((c,i)=>{c.style.marginLeft=i?ml+'px':'0';c.style.zIndex=i});
 }
 const sortBtn=()=>`<button class="ghost" data-local="sort">↕ ${byVal?'Por naipe':'Por número'}</button>`;
+function renderBuraco(){
+  const sp=st.me<0,me=sp?0:st.me,my=me%2,NOS=sp?'Dupla A':'Nós',ELES=sp?'Dupla B':'Eles';
+  for(const c of [...bsel])if(!st.hand.includes(c))bsel.delete(c);
+  $('gnum').textContent=st.code+(st.specs.length?` · 👀${st.specs.length}`:'');
+  $('sitbot').hidden=!(sp&&st.seats.some(s=>s&&s.bot));$('acc').hidden=$('acc2').hidden=true;
+  $('score').innerHTML=`<div class="cz">${NOS} <b>${st.total[my]}</b> × <b>${st.total[1-my]}</b> ${ELES}</div><small style="opacity:.75">Até ${st.meta} · Morto: ${NOS} ${st.got[my]?'✓':'—'} ${ELES} ${st.got[1-my]?'✓':'—'}</small>`;
+  $('trump').innerHTML='';
+  for(let i=0;i<4;i++){const rel=(i-me+4)%4,el=$('p-'+POS[rel]),s=st.seats[i];
+    el.className='pl '+POS[rel]+(sp&&!rel?' show':'')+(st.turn===i&&st.phase==='play'?' turn':'')+(i%2===my&&rel?' mate':'');
+    el.innerHTML=`${s.bot?'🤖 ':''}${esc(s.name)}${s.online?'':' 💤'}<small>${st.counts[i]} cartas</small>`}
+  const canAdd=st.canMeld&&bsel.size>0;
+  const row=(k,cls)=>{const d=document.createElement('div');d.className='mrow '+cls;
+    d.innerHTML=st.melds[k].map((m,i)=>`<div class="meld${m.cards.length>=7?(m.limpa?' cl':' cs'):''}${k===my&&canAdd?' can':''}"${k===my&&canAdd?` data-a="add" data-k="${i}"`:''}>${m.cards.map(c=>card(c,'mini')).join('')}</div>`).join('');
+    $('table').appendChild(d)};
+  row(1-my,'them');row(my,'us');
+  const tr=$('trick');tr.className='';$('tpts').hidden=true;
+  const mor=k=>st.got[k]?'✓ pegou':'11';
+  tr.innerHTML=`<div class="bpiles"><div><div class="card back${st.canDraw?' ok':''}" data-a="draw:stock"></div><small>Monte ${st.stock}</small></div>`+
+    `<div>${st.top?card(st.top,st.canDraw?'ok':'').replace('<div class="','<div data-a="take" class="'):'<div class="card" style="opacity:.2"></div>'}<small>Lixo ${st.lixo}</small></div>`+'</div>';
+  const big=st.hand.length>13;
+  $('hand').innerHTML=st.hand.map(c=>card(c,(bsel.has(c)?'sel':'')+(big?' mini2':''))).join('');
+  {const cs=[...$('hand').children],n=cs.length,av=$('hand').clientWidth-8,W=cs.length?cs[0].offsetWidth:66,ml=n>1?Math.min(4,(av-n*W)/(n-1)):0;cs.forEach((c,i)=>{c.style.marginLeft=i?ml+'px':'0';c.style.zIndex=i})}
+  const n=bsel.size;
+  $('status').textContent=sp?'👀 Você está assistindo':st.phase!=='play'?'':st.canDraw?'Compre do monte, ou selecione e toque no lixo':st.canMeld?(n?`${n} selecionada${n>1?'s':''} · toque num jogo seu para juntar`:'Selecione cartas para baixar ou 1 para descartar'):`Vez de ${st.seats[st.turn].name}`;
+  $('tbar').innerHTML=st.canMeld?(n>=3?'<button data-a="meld">⬇ Baixar jogo</button>':'')+(n===1?'<button class="red" data-a="disc">Descartar</button>':''):'';
+  const r=st.result,over=st.phase==='handEnd'||st.phase==='end';$('ov').hidden=!over;
+  if(over&&r){const P=r.parts,row2=(l,f)=>`<tr><td style="text-align:left">${l}</td><td>${f(P[my])}</td><td>${f(P[1-my])}</td></tr>`;
+    $('ovt').textContent=st.phase==='end'?(st.total[my]>=st.total[1-my]?(sp?`${NOS} venceu`:'🏆 Vocês venceram a partida!'):(sp?`${ELES} venceu`:'Eles venceram a partida')):r.bateu>=0?`🏁 ${st.seats[r.bateu].name} bateu!`:'Acabou o monte';
+    $('ovp').innerHTML=`<table style="width:100%;font-size:14px"><tr><td></td><td><b>${NOS}</b></td><td><b>${ELES}</b></td></tr>${row2('Na mesa',x=>x.mesa)}${row2('Canastras/batida',x=>x.bonus)}${row2('Na mão',x=>x.mao)}${row2('Morto',x=>x.morto)}${row2('<b>Rodada</b>',x=>'<b>'+x.total+'</b>')}${row2('Total',(x)=>'')}</table>`.replace(/<tr><td style="text-align:left">Total<\/td><td><\/td><td><\/td><\/tr>/,`<tr><td style="text-align:left">Total</td><td>${st.total[my]}</td><td>${st.total[1-my]}</td></tr>`);
+    $('next').textContent=st.phase==='end'?'Nova partida':'Próxima rodada'}
+}
 function renderPife(){
   const {sp,me,nm}=soloBase();
   $('score').innerHTML=`<div style="font-weight:700">Pife</div><small style="opacity:.8">Vitórias: ${st.seats.map((s,i)=>s?`${esc(s.name)} ${st.wins[i]}`:'').filter(Boolean).join(' · ')}</small>`;
@@ -365,7 +414,7 @@ function renderTruco(){
   const tp=$('tpts');tp.hidden=st.last==null;if(st.last!=null)tp.textContent=st.last<0?'Cangou!':`Vaza de ${TEAM(st.last)}`;
   if(st.win!=null)tr.h=setTimeout(()=>tr.className='go-'+POS[(st.win-me+4)%4],1600);
   $('hand').innerHTML=st.hand.map(c=>card(c,st.canPlay?'ok':'')).join('');
-  {const cs=[...$('hand').children],n=cs.length,av=$('hand').clientWidth-8,W=cs.length?cs[0].offsetWidth:66,ml=n>1?Math.min(6,(av-n*W)/(n-1)):0;cs.forEach((c,i)=>c.style.marginLeft=i?ml+'px':'0')}
+  {const cs=[...$('hand').children],n=cs.length,av=$('hand').clientWidth-8,W=cs.length?cs[0].offsetWidth:66,ml=n>1?Math.min(6,(av-n*W)/(n-1)):0;cs.forEach((c,i)=>{c.style.marginLeft=i?ml+'px':'0';c.style.zIndex=i})}
   const vz=st.R.map(x=>x<0?'⚪':x===my?'🟢':'🔴').join(' ');
   let txt='',bar='';
   if(st.phase==='decide11'){
@@ -406,7 +455,7 @@ function renderGame(){
    tp.hidden=st.win==null;if(st.win!=null)tp.textContent=`+${n} para ${st.win%2===my?NOS:ELES}`}
   if(st.win!=null)tr.h=setTimeout(()=>tr.className='go-'+POS[(st.win-me+4)%4],1900); // deixa ver a vaza e depois leva para quem ganhou
   $('hand').innerHTML=st.hand.map(c=>card(c,st.legal.length?'ok':'')).join('');
-  {const cs=[...$('hand').children],n=cs.length,av=$('hand').clientWidth-8,W=cs.length?cs[0].offsetWidth:66,ml=n>1?Math.min(6,(av-n*W)/(n-1)):0;cs.forEach((c,i)=>c.style.marginLeft=i?ml+'px':'0')}
+  {const cs=[...$('hand').children],n=cs.length,av=$('hand').clientWidth-8,W=cs.length?cs[0].offsetWidth:66,ml=n>1?Math.min(6,(av-n*W)/(n-1)):0;cs.forEach((c,i)=>{c.style.marginLeft=i?ml+'px':'0';c.style.zIndex=i})}
   $('acc').hidden=!(st.canAccuse&&st.phase==='play');$('acc2').hidden=!(st.canAccuse&&st.phase==='handEnd');
   $('status').textContent=sp?'👀 Você está assistindo':st.phase!=='play'?'':st.turn===me?(st.legal.length?'Sua vez!':''):`Vez de ${st.seats[st.turn].name}`;
   const r=st.result,over=st.phase==='handEnd'||st.phase==='end';$('ov').hidden=!over;

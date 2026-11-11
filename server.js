@@ -20,7 +20,7 @@ const sortFn = (a, b) => SUITS.indexOf(a[1]) - SUITS.indexOf(b[1]) || str(b) - s
 const rooms = {}, where = {};
 // Outros jogos (cada um no seu arquivo em games/). A Sueca continua neste arquivo.
 const GAMES = { truco_p: require('./games/truco')('paulista'), truco_m: require('./games/truco')('mineiro'),
-  pife: require('./games/pife')(), burro: require('./games/burro')() };
+  pife: require('./games/pife')(), burro: require('./games/burro')(), buraco: require('./games/buraco')() };
 const ctx = { push: r => push(r), say: (r, t) => say(r, t) };
 const other = r => r.game && r.game !== 'sueca' ? GAMES[r.game] : null;             // where[pid] = código da sala
 
@@ -249,7 +249,10 @@ io.on('connection', sock => {
     const r = room(); if (!r) return;
     if (other(r)) other(r).act(r, seatOf(r), { type: 'play', card }, ctx); else play(r, seatOf(r), card);
   });
-  sock.on('act', m => { const r = room(); if (r && other(r)) other(r).act(r, seatOf(r), m, ctx); });
+  sock.on('act', m => {
+    const r = room(); if (!r || !other(r)) return;
+    const e = other(r).act(r, seatOf(r), m, ctx); if (typeof e === 'string') sock.emit('err', e);   // aviso só para quem jogou
+  });
   sock.on('next', () => {
     const r = room(); if (!r) return;
     if (other(r)) return other(r).act(r, seatOf(r), { type: 'next' }, ctx);
