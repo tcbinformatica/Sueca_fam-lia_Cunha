@@ -158,7 +158,10 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('[data-sit],[data-bot],#hand .card');if(!t)return;
   if(t.dataset.sit)sock.emit('sit',{seat:+t.dataset.sit});
   else if(t.dataset.bot)sock.emit('bot',{seat:+t.dataset.bot});
-  else if(st.legal.includes(t.dataset.c))sock.emit('play',{card:t.dataset.c});
+  else if(st.legal.includes(t.dataset.c)){
+    const c=t.dataset.c,lead=st.trick.length&&!st.win&&st.trick[0].card[1]; // aviso só para quem joga
+    if(lead&&c[1]!==lead&&st.hand.some(x=>x[1]===lead)&&!confirm(`⚠️ Você tem ${SY[lead]}!\nJogar ${c[0]}${SY[c[1]]} é renúncia e pode ser acusada.\n\nJogar mesmo assim?`))return;
+    sock.emit('play',{card:c})}
 });
 
 // ---------- Câmera e áudio (WebRTC, direto entre os celulares) ----------
