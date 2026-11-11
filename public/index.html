@@ -197,7 +197,7 @@ function renderLobby(){
 }
 function renderGame(){
   const me=st.me,my=me%2;
-  $('score').innerHTML=`<div class="cz">Nós ${cruz(st.games[my])}${cruz(st.games[1-my])} Eles</div><small style="display:block;opacity:.75;text-align:center">Partidas ${st.matches[my]} × ${st.matches[1-my]}</small>`;
+  $('score').innerHTML=`<div class="cz">Nós ${cruz(st.games[my])}${cruz(st.games[1-my])} Eles</div><small style="display:block;opacity:.75;text-align:center">Partidas ${st.matches[my]} × ${st.matches[1-my]}${st.mult>1?` · <b style="color:#f4c542;font-size:13px">mão vale x${st.mult}</b>`:''}</small>`;
   $('trump').innerHTML=`<div><small>Trunfo<br>${esc(st.seats[st.dealer].name)}</small></div>`+card(st.trumpCard,'mini');
   for(let i=0;i<4;i++){
     const rel=(i-me+4)%4,el=$('p-'+POS[rel]),s=st.seats[i];
@@ -215,7 +215,7 @@ function renderGame(){
   if(over&&r){
     const g=`${r.g} ponto${r.g>1?'s':''}`;
     $('ovt').textContent=st.phase==='end'?(Math.min(...st.games)===0?'🐱 Gato! ':'')+(st.games[my]>=4?'🏆 Vocês venceram a partida!':'Eles venceram a partida')+` (${st.matches[my]} × ${st.matches[1-my]})`:
-      r.renuncia?`🚨 Renúncia de ${r.renuncia}!`:r.team<0?'Empate (60 × 60)':(r.g===4?'🚩 Bandeira! ':'')+(r.team===my?`Vocês ganharam ${g}`:`Eles ganharam ${g}`);
+      r.renuncia?`🚨 Renúncia de ${r.renuncia}!`:r.team<0?`Empate 60 × 60! Próxima mão vale x${st.mult}`:(r.band?'🚩 Bandeira! ':'')+(r.m>1?`Valendo x${r.m}! `:'')+(r.team===my?`Vocês ganharam ${g}`:`Eles ganharam ${g}`);
     $('ovp').textContent=r.renuncia?`${r.acc} pegou. ${r.team===my?'Vocês ganham':'Eles ganham'} 4 jogos.`:r.falsa?`${r.falsa} acusou sem razão.`:`Pontos: Nós ${r.pts[my]} × ${r.pts[1-my]} Eles`;
     $('next').textContent=st.phase==='end'?'Nova partida':'Próxima mão';
   }

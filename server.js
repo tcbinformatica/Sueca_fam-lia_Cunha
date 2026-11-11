@@ -92,10 +92,11 @@ function closeHand(r) {                  // 4 pontos fecha a partida e soma no p
   else r.phase = 'handEnd';
 }
 function endHand(r) {
-  const [a, b] = r.pts; let t = -1, g = 0;
-  if (a !== b) { t = a > b ? 0 : 1; const p = r.pts[t]; g = p === 120 ? 4 : p >= 91 ? 2 : 1; }
+  const [a, b] = r.pts, m = r.mult; let t = -1, g = 0, band = false;
+  if (a !== b) { t = a > b ? 0 : 1; const p = r.pts[t]; band = p === 120; g = (band ? 4 : p >= 91 ? 2 : 1) * m; r.mult = 1; }
+  else r.mult *= 2;                        // empate 60 x 60: a próxima mão vale dobrado
   if (t >= 0) r.games[t] += g;
-  r.result = { team: t, g, pts: r.pts.slice() };
+  r.result = { team: t, g, pts: r.pts.slice(), band, m };
   closeHand(r);
 }
 function say(r, text) { r.msg = { id: Date.now() + Math.random(), text }; }
@@ -113,7 +114,7 @@ function accuse(r, seat) {
   if (off) {
     if (r.phase === 'handEnd' && r.result.team >= 0) r.games[r.result.team] -= r.result.g;
     clearTimeout(r.timer); r.trick = []; r.pause = false; r.judged = true;
-    r.games[team] += 4;
+    r.games[team] += 4; r.mult = 1;
     const ren = r.seats[off.seat].name;
     r.result = { team, g: 4, pts: r.pts.slice(), renuncia: ren, acc };
     closeHand(r);
@@ -144,7 +145,7 @@ function view(r, pid) {
     canAccuse: me >= 0 && (r.phase === 'play' || r.phase === 'handEnd') && !r.judged && !r.falseAcc[me % 2],
     msg: r.msg,
     trump: r.trump, trumpCard: r.trumpCard, dealer: r.dealer, turn: r.turn,
-    trick: r.trick, win: r.pause ? r.win : null, games: r.games, matches: r.matches, result: r.result,
+    trick: r.trick, win: r.pause ? r.win : null, mult: r.mult, games: r.games, matches: r.matches, result: r.result,
   };
 }
 function push(r) {
@@ -177,7 +178,7 @@ io.on('connection', sock => {
   sock.on('create', ({ name } = {}) => {
     if (!pid) return; leave();
     const c = newCode();
-    rooms[c] = { code: c, host: pid, phase: 'lobby', games: [0, 0], matches: [0, 0], trick: [], dealer: null,
+    rooms[c] = { code: c, host: pid, phase: 'lobby', games: [0, 0], matches: [0, 0], mult: 1, trick: [], dealer: null,
       seats: [{ pid, name: clean(name), sid: sock.id, online: true }, null, null, null] };
     where[pid] = c; push(rooms[c]);
   });
