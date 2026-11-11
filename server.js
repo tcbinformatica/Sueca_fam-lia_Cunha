@@ -87,12 +87,16 @@ function play(r, seat, card) {
     push(r);
   }, 1600);
 }
+function closeHand(r) {                  // 4 pontos fecha a partida e soma no placar geral
+  if (r.games.some(x => x >= 4)) { r.phase = 'end'; r.matches[r.games[0] >= 4 ? 0 : 1]++; }
+  else r.phase = 'handEnd';
+}
 function endHand(r) {
   const [a, b] = r.pts; let t = -1, g = 0;
   if (a !== b) { t = a > b ? 0 : 1; const p = r.pts[t]; g = p === 120 ? 4 : p >= 91 ? 2 : 1; }
   if (t >= 0) r.games[t] += g;
   r.result = { team: t, g, pts: r.pts.slice() };
-  r.phase = r.games.some(x => x >= 4) ? 'end' : 'handEnd';
+  closeHand(r);
 }
 function say(r, text) { r.msg = { id: Date.now() + Math.random(), text }; }
 function botsNotice(r, offender) {           // bots adversários às vezes percebem a renúncia
@@ -112,13 +116,13 @@ function accuse(r, seat) {
     r.games[team] += 4;
     const ren = r.seats[off.seat].name;
     r.result = { team, g: 4, pts: r.pts.slice(), renuncia: ren, acc };
-    r.phase = r.games.some(x => x >= 4) ? 'end' : 'handEnd';
+    closeHand(r);
     say(r, `🚨 ${acc} acusou renúncia de ${ren}. Correto! +4 jogos`);
   } else {
     if (r.falseAcc[team]) return;
     r.falseAcc[team] = true; r.games[1 - team] += 1;
     say(r, `${acc} acusou renúncia, mas não houve. +1 jogo para a outra dupla`);
-    if (r.games[1 - team] >= 4) { clearTimeout(r.timer); r.judged = true; r.result = { team: 1 - team, g: 1, pts: r.pts.slice(), falsa: acc }; r.phase = 'end'; }
+    if (r.games[1 - team] >= 4) { clearTimeout(r.timer); r.judged = true; r.result = { team: 1 - team, g: 1, pts: r.pts.slice(), falsa: acc }; closeHand(r); }
   }
   push(r);
 }
@@ -140,7 +144,7 @@ function view(r, pid) {
     canAccuse: me >= 0 && (r.phase === 'play' || r.phase === 'handEnd') && !r.judged && !r.falseAcc[me % 2],
     msg: r.msg,
     trump: r.trump, trumpCard: r.trumpCard, dealer: r.dealer, turn: r.turn,
-    trick: r.trick, games: r.games, result: r.result,
+    trick: r.trick, games: r.games, matches: r.matches, result: r.result,
   };
 }
 function push(r) {
@@ -173,7 +177,7 @@ io.on('connection', sock => {
   sock.on('create', ({ name } = {}) => {
     if (!pid) return; leave();
     const c = newCode();
-    rooms[c] = { code: c, host: pid, phase: 'lobby', games: [0, 0], trick: [], dealer: null,
+    rooms[c] = { code: c, host: pid, phase: 'lobby', games: [0, 0], matches: [0, 0], trick: [], dealer: null,
       seats: [{ pid, name: clean(name), sid: sock.id, online: true }, null, null, null] };
     where[pid] = c; push(rooms[c]);
   });

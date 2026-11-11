@@ -26,6 +26,7 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
 .seat .btns{display:flex;gap:8px}
 #top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;font-size:15px}
 #score b{font-size:20px}
+.cz{display:flex;align-items:center;gap:6px}
 #trump{display:flex;align-items:center;gap:6px;font-size:13px}
 #trump small{opacity:.7}
 #table{flex:1;position:relative}
@@ -173,6 +174,10 @@ $('cam').onclick=async()=>{
 };
 $('mic').onclick=()=>{const a=local&&local.getAudioTracks()[0];if(!a)return;a.enabled=!a.enabled;$('mic').textContent=a.enabled?'🎤':'🔇'};
 
+function cruz(n){ // placar em cruz: uma bolinha em cada canto por ponto
+  const q=[[8,8],[24,8],[24,24],[8,24]];
+  return `<svg width="34" height="34" viewBox="0 0 32 32"><path d="M16 2V30M2 16H30" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>`+
+    q.slice(0,Math.min(n,4)).map(([x,y])=>`<circle cx="${x}" cy="${y}" r="4.5" fill="#f4c542"/>`).join('')+`</svg>`}
 function render(){
   if(!st)return show('home');
   if(st.phase==='lobby')return renderLobby();
@@ -189,7 +194,7 @@ function renderLobby(){
 }
 function renderGame(){
   const me=st.me,my=me%2;
-  $('score').innerHTML=`Nós <b>${st.games[my]}</b> × <b>${st.games[1-my]}</b> Eles`;
+  $('score').innerHTML=`<div class="cz">Nós ${cruz(st.games[my])}${cruz(st.games[1-my])} Eles</div><small style="display:block;opacity:.75;text-align:center">Partidas ${st.matches[my]} × ${st.matches[1-my]}</small>`;
   $('trump').innerHTML=`<div><small>Trunfo<br>${esc(st.seats[st.dealer].name)}</small></div>`+card(st.trumpCard,'mini');
   for(let i=0;i<4;i++){
     const rel=(i-me+4)%4,el=$('p-'+POS[rel]),s=st.seats[i];
@@ -202,9 +207,9 @@ function renderGame(){
   $('status').textContent=st.phase!=='play'?'':st.turn===me?(st.legal.length?'Sua vez!':''):`Vez de ${st.seats[st.turn].name}`;
   const r=st.result,over=st.phase==='handEnd'||st.phase==='end';$('ov').hidden=!over;
   if(over&&r){
-    const g=`${r.g} jogo${r.g>1?'s':''}`;
-    $('ovt').textContent=st.phase==='end'?(st.games[my]>=4?'🏆 Vocês venceram a partida!':'Eles venceram a partida'):
-      r.renuncia?`🚨 Renúncia de ${r.renuncia}!`:r.team<0?'Empate (60 × 60)':r.team===my?`Vocês ganharam ${g}!`:`Eles ganharam ${g}`;
+    const g=`${r.g} ponto${r.g>1?'s':''}`;
+    $('ovt').textContent=st.phase==='end'?(st.games[my]>=4?'🏆 Vocês venceram a partida!':'Eles venceram a partida')+` (${st.matches[my]} × ${st.matches[1-my]})`:
+      r.renuncia?`🚨 Renúncia de ${r.renuncia}!`:r.team<0?'Empate (60 × 60)':(r.g===4?'🚩 Bandeira! ':r.g===2?'🐱 Gato! ':'')+(r.team===my?`Vocês ganharam ${g}`:`Eles ganharam ${g}`);
     $('ovp').textContent=r.renuncia?`${r.acc} pegou. ${r.team===my?'Vocês ganham':'Eles ganham'} 4 jogos.`:r.falsa?`${r.falsa} acusou sem razão.`:`Pontos: Nós ${r.pts[my]} × ${r.pts[1-my]} Eles`;
     $('next').textContent=st.phase==='end'?'Nova partida':'Próxima mão';
   }

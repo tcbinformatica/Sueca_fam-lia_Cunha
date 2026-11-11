@@ -12,8 +12,8 @@ Jogo de Sueca online e fechado: só entra quem tem o código da sala (4 letras).
   - Se a acusação estiver certa, a dupla que acusou ganha 4 jogos e a mão acaba.
   - Se estiver errada, a outra dupla ganha 1 jogo. Cada dupla só pode errar uma acusação por mão.
   - Os bots nunca roubam. Mas, quando um ladrão joga depois o naipe que tinha negado, os bots adversários às vezes percebem e acusam.
-- Mais de 60 pontos = 1 jogo; 91 ou mais = 2 jogos; 120 = 4 jogos; 60 a 60 = empate.
-- Ganha a partida a dupla que chegar a 4 jogos.
+- 61 a 90 = 1 ponto; Gato (91 a 119, o adversário não livra os 30) = 2 pontos; Bandeira (120) = 4 pontos; 60 a 60 = empate.
+- Os pontos são marcados em cruz, com uma bolinha em cada canto. Quem fecha a cruz (4 pontos) ganha a partida, e o placar geral de partidas fica embaixo.
 - Se alguém cair, o bot joga por ele depois de 15 segundos. Ao reabrir o app, a pessoa volta para o mesmo lugar.
 
 ## Câmera e voz
