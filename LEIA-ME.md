@@ -22,6 +22,12 @@ Jogo de Sueca online e fechado: só entra quem tem o código da sala (4 letras).
 - O vídeo vai direto de um celular para o outro, sem passar pelo servidor.
 - Em algumas redes de 4G a conexão direta é bloqueada e o vídeo não aparece. Se isso acontecer, dá para adicionar um servidor TURN; me peça que eu configuro.
 
+## Espectadores
+- Na tela inicial, toque em **👀 Só assistir** para entrar como espectador. Quem tentar entrar com a mesa cheia vira espectador automaticamente.
+- O espectador vê a mesa e a câmera dos jogadores, mas não vê as cartas de ninguém.
+- Ele fala só por áudio: o botão **🎤 Falar** liga o microfone, sem câmera.
+- Se houver um bot na mesa, o botão **🪑 Jogar** coloca o espectador no lugar dele.
+
 ## Passo 1: subir o servidor (grátis, no Render)
 1. Crie uma conta no GitHub e um repositório novo. Envie todos os arquivos desta pasta (inclusive a pasta `.github`).
 2. Crie uma conta em render.com e escolha **New > Web Service**, ligado a esse repositório.

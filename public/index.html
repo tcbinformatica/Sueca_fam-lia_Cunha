@@ -35,7 +35,7 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
 .pl.mate{border:1px solid #f4c542}
 .pl.turn{background:#f4c542;color:#222}
 .pl.top{top:6px;left:50%;transform:translateX(-50%)}
-.pl.left{left:0;top:17%}.pl.right{right:0;top:17%}.pl.bottom{display:none}
+.pl.left{left:0;top:17%}.pl.right{right:0;top:17%}.pl.bottom{display:none}.pl.bottom.show{display:block;bottom:96px;left:50%;transform:translateX(-50%)}
 #trick{position:absolute;left:50%;top:56%;width:min(250px,64vw);height:min(280px,50%);transform:translate(-50%,-50%)}
 #trick[class*=go]{transition:transform 1.1s ease-in,opacity 1.1s ease-in;opacity:0}
 #trick.go-top{transform:translate(-50%,-160%) scale(.4)}#trick.go-bottom{transform:translate(-50%,70%) scale(.4)}
@@ -80,6 +80,7 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
   <button id="create">Criar sala</button>
   <div class="or">ou entre com o código</div>
   <div class="row"><input id="code" placeholder="CÓDIGO" maxlength="4" style="text-transform:uppercase"><button id="join" style="width:40%">Entrar</button></div>
+  <button id="watch" class="ghost">👀 Só assistir</button>
 </div>
 
 <div id="lobby" class="screen" hidden>
@@ -88,6 +89,7 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
   <button id="share" class="ghost">Compartilhar código</button>
   <div class="sub" style="margin:10px 0 0">Duplas: lugares 1 e 3 contra 2 e 4</div>
   <div id="seats"></div>
+  <div id="lspec" class="sub" style="margin:6px 0 0"></div>
   <div style="flex:1"></div>
   <button id="start">Começar (vagas viram bots)</button>
   <div id="wait" class="sub">Aguardando o anfitrião começar…</div>
@@ -101,7 +103,7 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
     <div id="trick"></div>
     <video id="v-top" class="vid" autoplay playsinline></video><video id="v-left" class="vid" autoplay playsinline></video>
     <video id="v-right" class="vid" autoplay playsinline></video><video id="v-bottom" class="vid" autoplay playsinline muted></video>
-    <div id="gbox"><div>Sala<b id="gnum"></b></div><div class="gr"><button id="gcode" class="ghost">📤 Enviar link</button><button id="cam" class="ghost">📷</button><button id="mic" class="ghost" hidden>🎤</button></div></div>
+    <div id="gbox"><div>Sala<b id="gnum"></b></div><div class="gr"><button id="gcode" class="ghost">📤 Enviar link</button><button id="cam" class="ghost">📷</button><button id="mic" class="ghost" hidden>🎤</button><button id="sitbot" hidden>🪑 Jogar</button></div></div>
     <button id="acc" hidden>🚨 Renúncia!</button>
   </div>
   <div id="status"></div>
@@ -131,6 +133,8 @@ function card(c,cls=''){return `<div class="card ${'hd'.includes(c[1])?'red':''}
 
 $('create').onclick=()=>{const n=nm();n&&sock.emit('create',{name:n})};
 $('join').onclick=()=>{const n=nm();n&&sock.emit('join',{name:n,code:$('code').value})};
+$('watch').onclick=()=>{const n=nm();n&&sock.emit('join',{name:n,code:$('code').value,watch:true})};
+$('sitbot').onclick=()=>{const i=st.seats.findIndex(s=>s&&s.bot);if(i>=0)sock.emit('sit',{seat:i})};
 $('start').onclick=()=>sock.emit('start');
 $('next').onclick=()=>sock.emit('next');
 $('acc').onclick=$('acc2').onclick=()=>{if(confirm('Acusar a outra dupla de renúncia?\nSe errar, eles ganham 1 jogo.'))sock.emit('accuse')};
@@ -145,40 +149,55 @@ document.addEventListener('click',e=>{
   else if(st.legal.includes(t.dataset.c))sock.emit('play',{card:t.dataset.c});
 });
 
-// ---------- Câmera e áudio (WebRTC, conexão direta entre os celulares) ----------
+// ---------- Câmera e áudio (WebRTC, direto entre os celulares) ----------
+// Jogadores: câmera + microfone. Espectadores: só microfone, e veem a câmera dos jogadores.
 const ICE={iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']}]};
-const pcs={};let local=null,online={};
-const vidOf=seat=>$('v-'+POS[(seat-st.me+4)%4]);
-function closePc(j){if(pcs[j]){pcs[j].close();delete pcs[j]}const v=st&&st.me>=0&&vidOf(j);if(v){v.srcObject=null;v.classList.remove('on')}}
+const pcs={};let local=null,online={},myId=null;
+const base=()=>st.me>=0?st.me:0, isSpec=()=>st&&st.me<0;
+function mediaEl(j){
+  if(j[0]==='p')return $('v-'+POS[(+j.slice(1)-base()+4)%4]);
+  let a=document.getElementById('a-'+j);if(!a){a=document.createElement('audio');a.id='a-'+j;a.autoplay=true;document.body.appendChild(a)}return a}
+function closePc(j){if(pcs[j]){pcs[j].close();delete pcs[j]}if(!st||st.phase==='lobby')return;const el=mediaEl(j);
+  if(el.tagName==='AUDIO')el.remove();else if(!(j===myId)){el.srcObject=null;el.classList.remove('on')}}
 function newPc(j){closePc(j);const pc=pcs[j]=new RTCPeerConnection(ICE);
   pc.onicecandidate=e=>e.candidate&&sock.emit('rtc',{to:j,type:'ice',c:e.candidate});
-  pc.ontrack=e=>{const v=vidOf(j);v.srcObject=e.streams[0];if(e.track.kind==='video')v.classList.add('on');v.play().catch(()=>{})};
+  pc.ontrack=e=>{const el=mediaEl(j);el.srcObject=e.streams[0];if(e.track.kind==='video'&&el.tagName==='VIDEO')el.classList.add('on');el.play().catch(()=>{})};
   return pc}
 function addLocal(pc){if(local)local.getTracks().forEach(t=>pc.addTrack(t,local))}
-async function offer(j){const pc=newPc(j);
-  if(local)addLocal(pc);else{pc.addTransceiver('video',{direction:'recvonly'});pc.addTransceiver('audio',{direction:'recvonly'})}
+async function offer(j){const pc=newPc(j);addLocal(pc);
+  for(const k of['video','audio'])if(!local||!local.getTracks().some(t=>t.kind===k))pc.addTransceiver(k,{direction:'recvonly'});
   await pc.setLocalDescription(await pc.createOffer());sock.emit('rtc',{to:j,type:'offer',sdp:pc.localDescription})}
 sock.on('rtc',async m=>{try{
+  if(!m.from)return;
   if(m.type==='want')return offer(m.from);
   if(m.type==='offer'){const pc=newPc(m.from);await pc.setRemoteDescription(m.sdp);addLocal(pc);
     await pc.setLocalDescription(await pc.createAnswer());sock.emit('rtc',{to:m.from,type:'answer',sdp:pc.localDescription})}
   else if(m.type==='answer')await pcs[m.from]?.setRemoteDescription(m.sdp);
   else if(m.type==='ice')await pcs[m.from]?.addIceCandidate(m.c);
 }catch(e){console.log(e)}});
-function connect(j){if(st.me<j)offer(j);else sock.emit('rtc',{to:j,type:'want'})}
+function connect(j){if(myId<j)offer(j);else sock.emit('rtc',{to:j,type:'want'})}
+function peers(){const L=[];st.seats.forEach((s,j)=>{if(s&&!s.bot&&s.online&&'p'+j!==myId)L.push('p'+j)});
+  st.specs.forEach(x=>{if(x.online&&x.id!==myId)L.push(x.id)});return L}
+function stopLocal(){if(local){local.getTracks().forEach(t=>t.stop());local=null}$('v-bottom').classList.remove('on');camLabels()}
+function camLabels(){const sp=isSpec();$('mic').hidden=!local||sp;
+  $('cam').textContent=sp?(local?'🔇 Calar':'🎤 Falar'):(local?'🚫📷':'📷')}
 function rtcSync(){ // liga com quem entrou, desliga de quem saiu
-  if(!st||st.phase==='lobby'||st.me<0){for(const j in pcs)closePc(+j);online={};return}
-  st.seats.forEach((s,j)=>{if(j===st.me)return;const on=s&&!s.bot&&s.online;
-    if(!on&&pcs[j])closePc(j);
-    if(on&&!online[j]&&!pcs[j])connect(j);
-    online[j]=on});
+  if(!st||st.phase==='lobby'){for(const j in pcs)closePc(j);online={};if(local)stopLocal();myId=null;return}
+  if(myId!==st.myId){for(const j in pcs)closePc(j);online={};if(local)stopLocal();myId=st.myId} // virou jogador/espectador
+  $('v-bottom').muted=!isSpec();camLabels();
+  const L=peers();for(const j in pcs)if(!L.includes(j))closePc(j);
+  for(const j of L)if(!online[j]&&!pcs[j])connect(j);
+  online=Object.fromEntries(L.map(j=>[j,1]));
 }
 $('cam').onclick=async()=>{
-  if(local){local.getTracks().forEach(t=>t.stop());local=null;$('v-bottom').classList.remove('on');$('mic').hidden=true;$('cam').textContent='📷'}
-  else{try{local=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:240,height:240},audio:{echoCancellation:true,noiseSuppression:true}})}
-    catch(e){return toast('Sem permissão para câmera/microfone')}
-    $('v-bottom').srcObject=local;$('v-bottom').classList.add('on');$('mic').hidden=false;$('mic').textContent='🎤';$('cam').textContent='🚫📷'}
-  st.seats.forEach((s,j)=>{if(j!==st.me&&s&&!s.bot&&s.online)connect(j)}); // renegocia com todos
+  const sp=isSpec();
+  if(local)stopLocal();
+  else{try{local=await navigator.mediaDevices.getUserMedia(sp?{audio:{echoCancellation:true,noiseSuppression:true}}:
+      {video:{facingMode:'user',width:240,height:240},audio:{echoCancellation:true,noiseSuppression:true}})}
+    catch(e){return toast(sp?'Sem permissão para o microfone':'Sem permissão para câmera/microfone')}
+    if(!sp){$('v-bottom').srcObject=local;$('v-bottom').classList.add('on')}
+    $('mic').textContent='🎤';camLabels()}
+  for(const j of peers())connect(j); // renegocia com todos
 };
 $('mic').onclick=()=>{const a=local&&local.getAudioTracks()[0];if(!a)return;a.enabled=!a.enabled;$('mic').textContent=a.enabled?'🎤':'🔇'};
 
@@ -198,17 +217,19 @@ function renderLobby(){
     <span>${s?(s.bot?'🤖 ':'')+esc(s.name)+(i===st.me?' (você)':''):'— vazio —'}</span>
     <div class="btns">${!s?`<button class="ghost sm" data-sit="${i}">Sentar aqui</button>`:''}
     ${st.host&&(!s||s.bot)?`<button class="ghost sm" data-bot="${i}">${s?'Tirar bot':'+ Bot'}</button>`:''}</div></div>`).join('');
+  $('lspec').textContent=st.specs.length?'👀 Assistindo: '+st.specs.map(x=>x.name).join(', '):'';
   $('start').hidden=!st.host;$('wait').hidden=st.host;
 }
 function renderGame(){
-  const me=st.me,my=me%2;
-  $('gnum').textContent=st.code;
-  $('score').innerHTML=`<div class="cz">Nós ${cruz(st.games[my])}${cruz(st.games[1-my])} Eles</div><small style="display:block;opacity:.75;text-align:center">Partidas ${st.matches[my]} × ${st.matches[1-my]}${st.mult>1?` · <b style="color:#f4c542;font-size:13px">mão vale x${st.mult}</b>`:''}</small>`;
+  const sp=st.me<0,me=sp?0:st.me,my=me%2,NOS=sp?'Dupla A':'Nós',ELES=sp?'Dupla B':'Eles';
+  $('gnum').textContent=st.code+(st.specs.length?` · 👀${st.specs.length}`:'');
+  $('sitbot').hidden=!(sp&&st.seats.some(s=>s&&s.bot));
+  $('score').innerHTML=`<div class="cz">${NOS} ${cruz(st.games[my])}${cruz(st.games[1-my])} ${ELES}</div><small style="display:block;opacity:.75;text-align:center">Partidas ${st.matches[my]} × ${st.matches[1-my]}${st.mult>1?` · <b style="color:#f4c542;font-size:13px">mão vale x${st.mult}</b>`:''}</small>`;
   $('trump').innerHTML=`<div><small>Trunfo<br>${esc(st.seats[st.dealer].name)}</small></div>`+card(st.trumpCard,'mini');
   for(let i=0;i<4;i++){
     const rel=(i-me+4)%4,el=$('p-'+POS[rel]),s=st.seats[i];
-    el.className='pl '+POS[rel]+(st.turn===i&&st.phase==='play'?' turn':'')+(i%2===my&&rel?' mate':'');
-    el.innerHTML=`${s.bot?'🤖 ':''}${esc(s.name)}${s.online?'':' 💤'}<small>${st.counts[i]} cartas${i%2===my?' · parceiro':''}</small>`;
+    el.className='pl '+POS[rel]+(sp&&!rel?' show':'')+(st.turn===i&&st.phase==='play'?' turn':'')+(i%2===my&&rel?' mate':'');
+    el.innerHTML=`${s.bot?'🤖 ':''}${esc(s.name)}${s.online?'':' 💤'}<small>${st.counts[i]} cartas${!sp&&i%2===my?' · parceiro':''}</small>`;
   }
   const tr=$('trick');tr.className='';clearTimeout(tr.h);
   tr.innerHTML=st.trick.map(t=>card(t.card,'tk '+POS[(t.seat-me+4)%4]+(t.seat===st.win?' win':''))).join('');
@@ -216,13 +237,13 @@ function renderGame(){
   $('hand').innerHTML=st.hand.map(c=>card(c,st.legal.length?'ok':'')).join('');
   {const cs=[...$('hand').children],n=cs.length,av=$('hand').clientWidth-8,ml=n>1?Math.min(4,(av-n*66)/(n-1)):0;cs.forEach((c,i)=>c.style.marginLeft=i?ml+'px':'0')}
   $('acc').hidden=!(st.canAccuse&&st.phase==='play');$('acc2').hidden=!(st.canAccuse&&st.phase==='handEnd');
-  $('status').textContent=st.phase!=='play'?'':st.turn===me?(st.legal.length?'Sua vez!':''):`Vez de ${st.seats[st.turn].name}`;
+  $('status').textContent=sp?'👀 Você está assistindo':st.phase!=='play'?'':st.turn===me?(st.legal.length?'Sua vez!':''):`Vez de ${st.seats[st.turn].name}`;
   const r=st.result,over=st.phase==='handEnd'||st.phase==='end';$('ov').hidden=!over;
   if(over&&r){
     const g=`${r.g} ponto${r.g>1?'s':''}`;
-    $('ovt').textContent=st.phase==='end'?(Math.min(...st.games)===0?'🐱 Gato! ':'')+(st.games[my]>=4?'🏆 Vocês venceram a partida!':'Eles venceram a partida')+` (${st.matches[my]} × ${st.matches[1-my]})`:
-      r.renuncia?`🚨 Renúncia de ${r.renuncia}!`:r.team<0?`Empate 60 × 60! Próxima mão vale x${st.mult}`:(r.band?'🚩 Bandeira! ':'')+(r.m>1?`Valendo x${r.m}! `:'')+(r.team===my?`Vocês ganharam ${g}`:`Eles ganharam ${g}`);
-    $('ovp').textContent=r.renuncia?`${r.acc} pegou. ${r.team===my?'Vocês ganham':'Eles ganham'} 4 jogos.`:r.falsa?`${r.falsa} acusou sem razão.`:`Pontos: Nós ${r.pts[my]} × ${r.pts[1-my]} Eles`;
+    $('ovt').textContent=st.phase==='end'?(Math.min(...st.games)===0?'🐱 Gato! ':'')+(sp?`${st.games[0]>=4?'Dupla A':'Dupla B'} venceu a partida`:st.games[my]>=4?'🏆 Vocês venceram a partida!':'Eles venceram a partida')+` (${st.matches[my]} × ${st.matches[1-my]})`:
+      r.renuncia?`🚨 Renúncia de ${r.renuncia}!`:r.team<0?`Empate 60 × 60! Próxima mão vale x${st.mult}`:(r.band?'🚩 Bandeira! ':'')+(r.m>1?`Valendo x${r.m}! `:'')+(sp?`Dupla ${r.team?'B':'A'} ganhou ${g}`:r.team===my?`Vocês ganharam ${g}`:`Eles ganharam ${g}`);
+    $('ovp').textContent=r.renuncia?`${r.acc} pegou. ${r.team===my?'Vocês ganham':'Eles ganham'} 4 jogos.`:r.falsa?`${r.falsa} acusou sem razão.`:`Pontos: ${NOS} ${r.pts[my]} × ${r.pts[1-my]} ${ELES}`;
     $('next').textContent=st.phase==='end'?'Nova partida':'Próxima mão';
   }
 }

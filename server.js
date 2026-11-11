@@ -134,14 +134,21 @@ function tick(r) {
   if (s.bot || !s.online)                 // bot joga; humano offline vira bot após 15s
     r.timer = setTimeout(() => play(r, r.turn, botCard(r, r.turn)), s.bot ? 1500 : 15000);
 }
+function pidOf(r, id) {                  // id de conexão: p0..p3 = jogadores, s... = espectadores
+  if (id && id[0] === 'p') { const s = r.seats[+id.slice(1)]; return s && !s.bot ? s : null; }
+  return r.specs.find(x => 's' + x.vid === id) || null;
+}
 function view(r, pid) {
   const me = r.seats.findIndex(s => s && s.pid === pid);
+  const sp = me < 0 ? r.specs.find(x => x.pid === pid) : null;
   const inGame = r.phase !== 'lobby';
   return {
     code: r.code, me, host: r.host === pid, phase: r.phase,
+    myId: me >= 0 ? 'p' + me : sp ? 's' + sp.vid : null,
     seats: r.seats.map(s => s && { name: s.name, bot: !!s.bot, online: !!(s.bot || s.online) }),
-    hand: inGame ? r.hands[me] : [], counts: inGame ? r.hands.map(h => h.length) : [],
-    legal: r.phase === 'play' && r.turn === me && !r.pause ? r.hands[me] : [],
+    specs: r.specs.map(x => ({ id: 's' + x.vid, name: x.name, online: !!x.online })),
+    hand: inGame && me >= 0 ? r.hands[me] : [], counts: inGame ? r.hands.map(h => h.length) : [],
+    legal: r.phase === 'play' && me >= 0 && r.turn === me && !r.pause ? r.hands[me] : [],
     canAccuse: me >= 0 && (r.phase === 'play' || r.phase === 'handEnd') && !r.judged && !r.falseAcc[me % 2],
     msg: r.msg,
     trump: r.trump, trumpCard: r.trumpCard, dealer: r.dealer, turn: r.turn,
@@ -149,7 +156,7 @@ function view(r, pid) {
   };
 }
 function push(r) {
-  for (const s of r.seats) if (s && !s.bot && s.sid) io.to(s.sid).emit('state', view(r, s.pid));
+  for (const s of [...r.seats, ...r.specs]) if (s && !s.bot && s.sid) io.to(s.sid).emit('state', view(r, s.pid));
   tick(r);
 }
 
@@ -158,45 +165,60 @@ io.on('connection', sock => {
   let pid = null;
   const room = () => rooms[where[pid]];
   const seatOf = r => r.seats.findIndex(s => s && s.pid === pid);
+  const person = r => r.seats.find(s => s && s.pid === pid) || r.specs.find(x => x.pid === pid);
+  const myId = r => { const i = seatOf(r); if (i >= 0) return 'p' + i; const x = r.specs.find(x => x.pid === pid); return x && 's' + x.vid; };
 
   function leave() {
     const r = room(); if (!r) return;
     const i = seatOf(r);
-    r.seats[i] = r.phase === 'lobby' ? null : { pid: 'bot' + i, name: BOT_NAMES[i], bot: true };
+    if (i >= 0) r.seats[i] = r.phase === 'lobby' ? null : { pid: 'bot' + i, name: BOT_NAMES[i], bot: true };
+    else r.specs = r.specs.filter(x => x.pid !== pid);
     delete where[pid];
     const humans = r.seats.filter(s => s && !s.bot);
-    if (!humans.length) { clearTimeout(r.timer); delete rooms[r.code]; return; }
-    if (r.host === pid) r.host = humans[0].pid;
+    if (!humans.length && !r.specs.length) { clearTimeout(r.timer); delete rooms[r.code]; return; }
+    if (r.host === pid && humans.length) r.host = humans[0].pid;
     push(r);
+  }
+  function watch(r, name) {                 // entra como espectador (só assiste e fala por áudio)
+    leave();
+    r.specs.push({ pid, name: clean(name), sid: sock.id, online: true, vid: Math.random().toString(36).slice(2, 8) });
+    where[pid] = r.code; push(r);
   }
 
   sock.on('hello', p => {
     pid = String((p && p.pid) || '').slice(0, 40);
     const r = room(); if (!r) return sock.emit('state', null);
-    const s = r.seats[seatOf(r)]; s.sid = sock.id; s.online = true; push(r);
+    const s = person(r); s.sid = sock.id; s.online = true; push(r);
   });
   sock.on('create', ({ name } = {}) => {
     if (!pid) return; leave();
     const c = newCode();
-    rooms[c] = { code: c, host: pid, phase: 'lobby', games: [0, 0], matches: [0, 0], mult: 1, trick: [], dealer: null,
+    rooms[c] = { code: c, host: pid, phase: 'lobby', games: [0, 0], matches: [0, 0], mult: 1, trick: [], dealer: null, specs: [],
       seats: [{ pid, name: clean(name), sid: sock.id, online: true }, null, null, null] };
     where[pid] = c; push(rooms[c]);
   });
-  sock.on('join', ({ name, code } = {}) => {
+  sock.on('join', ({ name, code, watch: w } = {}) => {
     if (!pid) return;
     const r = rooms[String(code || '').toUpperCase().trim()];
     if (!r) return sock.emit('err', 'Sala não encontrada');
     if (where[pid] === r.code) return push(r);
+    if (w) return watch(r, name);
     let i = r.phase === 'lobby' ? r.seats.findIndex(s => !s) : -1;
     if (i < 0) i = r.seats.findIndex(s => s && s.bot);   // entra no lugar de um bot
-    if (i < 0) return sock.emit('err', 'Sala cheia');
+    if (i < 0) { sock.emit('err', 'Mesa cheia: você entrou como espectador'); return watch(r, name); }
     leave();
     r.seats[i] = { pid, name: clean(name), sid: sock.id, online: true };
     where[pid] = r.code; push(r);
   });
-  sock.on('sit', ({ seat } = {}) => {
-    const r = room(); if (!r || r.phase !== 'lobby' || r.seats[seat] !== null) return;
-    const i = seatOf(r); r.seats[seat] = r.seats[i]; r.seats[i] = null; push(r);
+  sock.on('sit', ({ seat } = {}) => {        // trocar de lugar, ou espectador assumir uma vaga/bot
+    const r = room(); if (!r || !(seat >= 0 && seat < 4)) return;
+    const i = seatOf(r), t = r.seats[seat];
+    const ok = r.phase === 'lobby' ? t === null : i < 0 && t && t.bot;
+    if (!ok) return;
+    let p;
+    if (i >= 0) { p = r.seats[i]; r.seats[i] = null; }
+    else { const x = r.specs.find(x => x.pid === pid); r.specs = r.specs.filter(y => y !== x); p = { pid, name: x.name, sid: x.sid, online: true }; }
+    r.seats[seat] = p; push(r);
   });
   sock.on('bot', ({ seat } = {}) => {
     const r = room(); if (!r || r.host !== pid || r.phase !== 'lobby' || !(seat >= 0 && seat < 4)) return;
@@ -217,14 +239,14 @@ io.on('connection', sock => {
     if (r.phase === 'handEnd' || r.phase === 'end') { deal(r); push(r); }
   });
   sock.on('accuse', () => { const r = room(); if (r) accuse(r, seatOf(r)); });
-  sock.on('rtc', m => {                     // sinalização da câmera (WebRTC)
+  sock.on('rtc', m => {                     // sinalização de câmera/áudio (WebRTC)
     const r = room(); if (!r || !m) return;
-    const s = r.seats[m.to]; if (s && !s.bot && s.sid) io.to(s.sid).emit('rtc', { ...m, from: seatOf(r) });
+    const s = pidOf(r, String(m.to)); if (s && s.sid) io.to(s.sid).emit('rtc', { ...m, from: myId(r) });
   });
   sock.on('leave', () => { leave(); sock.emit('state', null); });
   sock.on('disconnect', () => {
     const r = room(); if (!r) return;
-    const s = r.seats[seatOf(r)]; if (s && s.sid === sock.id) { s.online = false; push(r); }
+    const s = person(r); if (s && s.sid === sock.id) { s.online = false; push(r); }
   });
 });
 
