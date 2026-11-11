@@ -17,7 +17,11 @@ const str = c => 9 - RANKS.indexOf(c[0]);
 const pts = c => PTS[c[0]] || 0;
 const sortFn = (a, b) => SUITS.indexOf(a[1]) - SUITS.indexOf(b[1]) || str(b) - str(a);
 
-const rooms = {}, where = {};             // where[pid] = código da sala
+const rooms = {}, where = {};
+// Outros jogos (cada um no seu arquivo em games/). A Sueca continua neste arquivo.
+const GAMES = { truco_p: require('./games/truco')('paulista'), truco_m: require('./games/truco')('mineiro') };
+const ctx = { push: r => push(r), say: (r, t) => say(r, t) };
+const other = r => r.game && r.game !== 'sueca' ? GAMES[r.game] : null;             // where[pid] = código da sala
 
 function newDeck() {
   const d = [];
@@ -128,6 +132,7 @@ function accuse(r, seat) {
   push(r);
 }
 function tick(r) {
+  if (other(r)) return other(r).tick(r, ctx);
   clearTimeout(r.timer);
   if (r.phase !== 'play' || r.pause) return;
   const s = r.seats[r.turn];
@@ -142,11 +147,15 @@ function view(r, pid) {
   const me = r.seats.findIndex(s => s && s.pid === pid);
   const sp = me < 0 ? r.specs.find(x => x.pid === pid) : null;
   const inGame = r.phase !== 'lobby';
-  return {
-    code: r.code, me, host: r.host === pid, phase: r.phase,
+  const common = {
+    code: r.code, me, host: r.host === pid, phase: r.phase, game: r.game || 'sueca',
     myId: me >= 0 ? 'p' + me : sp ? 's' + sp.vid : null,
     seats: r.seats.map(s => s && { name: s.name, bot: !!s.bot, online: !!(s.bot || s.online) }),
     specs: r.specs.map(x => ({ id: 's' + x.vid, name: x.name, online: !!x.online })),
+    msg: r.msg, dealer: r.dealer, matches: r.matches,
+  };
+  if (other(r)) return { ...common, ...(inGame ? other(r).view(r, me) : {}) };
+  return { ...common,
     hand: inGame && me >= 0 ? r.hands[me] : [], counts: inGame ? r.hands.map(h => h.length) : [],
     legal: r.phase === 'play' && me >= 0 && r.turn === me && !r.pause ? r.hands[me] : [],
     canAccuse: me >= 0 && (r.phase === 'play' || r.phase === 'handEnd') && !r.judged && !r.falseAcc[me % 2],
@@ -190,10 +199,10 @@ io.on('connection', sock => {
     const r = room(); if (!r) return sock.emit('state', null);
     const s = person(r); s.sid = sock.id; s.online = true; push(r);
   });
-  sock.on('create', ({ name } = {}) => {
+  sock.on('create', ({ name, game } = {}) => {
     if (!pid) return; leave();
     const c = newCode();
-    rooms[c] = { code: c, host: pid, phase: 'lobby', games: [0, 0], matches: [0, 0], mult: 1, trick: [], dealer: null, specs: [],
+    rooms[c] = { code: c, host: pid, game: GAMES[game] ? game : 'sueca', phase: 'lobby', games: [0, 0], matches: [0, 0], mult: 1, trick: [], dealer: null, specs: [],
       seats: [{ pid, name: clean(name), sid: sock.id, online: true }, null, null, null] };
     where[pid] = c; push(rooms[c]);
   });
@@ -230,15 +239,21 @@ io.on('connection', sock => {
   sock.on('start', () => {
     const r = room(); if (!r || r.host !== pid || r.phase !== 'lobby') return;
     r.seats = r.seats.map((s, i) => s || { pid: 'bot' + i, name: BOT_NAMES[i], bot: true });
-    deal(r); push(r);
+    if (other(r)) other(r).start(r, ctx); else deal(r);
+    push(r);
   });
-  sock.on('play', ({ card } = {}) => { const r = room(); if (r) play(r, seatOf(r), card); });
+  sock.on('play', ({ card } = {}) => {
+    const r = room(); if (!r) return;
+    if (other(r)) other(r).act(r, seatOf(r), { type: 'play', card }, ctx); else play(r, seatOf(r), card);
+  });
+  sock.on('act', m => { const r = room(); if (r && other(r)) other(r).act(r, seatOf(r), m, ctx); });
   sock.on('next', () => {
     const r = room(); if (!r) return;
+    if (other(r)) return other(r).act(r, seatOf(r), { type: 'next' }, ctx);
     if (r.phase === 'end') r.games = [0, 0];
     if (r.phase === 'handEnd' || r.phase === 'end') { deal(r); push(r); }
   });
-  sock.on('accuse', () => { const r = room(); if (r) accuse(r, seatOf(r)); });
+  sock.on('accuse', () => { const r = room(); if (r && !other(r)) accuse(r, seatOf(r)); });
   sock.on('rtc', m => {                     // sinalização de câmera/áudio (WebRTC)
     const r = room(); if (!r || !m) return;
     const s = pidOf(r, String(m.to)); if (s && s.sid) io.to(s.sid).emit('rtc', { ...m, from: myId(r) });

@@ -16,6 +16,12 @@ Jogo de Sueca online e fechado: só entra quem tem o código da sala (4 letras).
 - Os pontos são marcados em cruz, com uma bolinha em cada canto. Quem fecha a cruz (4 pontos) ganha a partida, e o placar geral de partidas fica embaixo. Partida fechada 4 a 0 é Gato.
 - Se alguém cair, o bot joga por ele depois de 15 segundos. Ao reabrir o app, a pessoa volta para o mesmo lugar.
 
+## Truco Paulista e Mineiro
+- Escolha o jogo na tela inicial antes de criar a sala.
+- Paulista: mão vale 1; Truco 3, Seis 6, Nove 9, Doze 12. A manilha é a carta seguinte à vira (ordem dos naipes: ♦ < ♠ < ♥ < ♣). Mão de onze: a dupla vê as cartas do parceiro e decide jogar (vale 3) ou correr.
+- Mineiro: mão vale 2; Truco 4, Seis 6, Dez 10, Doze 12. Manilhas fixas: 4♣ > 7♥ > A♠ > 7♦. Mão de dez igual à mão de onze.
+- Cangou (empate na vaza): vale a regra comum, quem ganhou a primeira leva; se a primeira cangou, a seguinte decide.
+
 ## Câmera e voz
 - Toque em 📷 para ligar a câmera e o microfone. A sua imagem aparece no canto de baixo e a dos amigos aparece perto dos nomes deles.
 - 🎤 liga e desliga o microfone. 🚫📷 desliga tudo.

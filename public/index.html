@@ -14,6 +14,7 @@ body{font-family:system-ui,-apple-system,Roboto,sans-serif;color:#fff;background
 .screen{height:100dvh;display:flex;flex-direction:column;padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom)}
 h1{font-size:44px;margin:12vh 0 4px;text-align:center;letter-spacing:2px}
 .sub{text-align:center;opacity:.8;margin-bottom:28px}
+select{width:100%;padding:14px;font-size:18px;border-radius:12px;border:0;margin:6px 0;color:#111;background:#fff}
 input{width:100%;padding:14px;font-size:18px;border-radius:12px;border:0;margin:6px 0;color:#111}
 button{padding:14px;font-size:17px;font-weight:700;border-radius:12px;border:0;background:#f4c542;color:#222;width:100%;margin:6px 0}
 button.ghost{background:rgba(255,255,255,.15);color:#fff}
@@ -66,20 +67,23 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
 .vid:not(.on){display:none}
 #v-top{top:54px;left:50%;margin-left:-39px}#v-left{left:4px;top:calc(17% + 54px)}#v-right{right:4px;top:calc(17% + 54px)}#v-bottom{right:4px;bottom:52px;transform:scaleX(-1)}
 #top .tb{display:flex;gap:6px}
-#toast{position:fixed;left:50%;bottom:120px;transform:translateX(-50%);background:#222;padding:10px 16px;border-radius:10px;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast{position:fixed;left:50%;top:30%;transform:translateX(-50%);background:#222;padding:10px 16px;border-radius:10px;opacity:0;transition:opacity .3s;pointer-events:none}
 #toast.on{opacity:1}
 #gbox{position:absolute;bottom:4px;left:0;display:flex;flex-direction:column;align-items:flex-start;gap:6px;z-index:3}
 #gbox div{font-size:13px;opacity:.85}#gbox b{font-size:20px;letter-spacing:3px;display:block}
 .gr{display:flex;gap:6px}.gr button{width:auto;margin:0;padding:6px 10px;font-size:14px}
+#tbar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;align-items:center}#tbar:empty{display:none}
+#tbar button{width:auto;padding:10px 16px;margin:4px 0}#tbar .red{background:#d84343;color:#fff}#tbar .card{width:44px;height:64px;font-size:16px;padding:4px 5px}#tbar .card i{font-size:20px}
 #toast{z-index:9;max-width:90vw;text-align:center}
 </style>
 </head>
 <body>
 
 <div id="home" class="screen">
-  <h1>♠ Sueca ♥</h1>
-  <div class="sub">TCB Cartas · Família Cunha</div>
+  <h1>♠ TCB Cartas ♥</h1>
+  <div class="sub">Família Cunha</div>
   <input id="name" placeholder="Seu nome" maxlength="14">
+  <select id="gsel"><option value="sueca">Sueca</option><option value="truco_p">Truco Paulista</option><option value="truco_m">Truco Mineiro</option></select>
   <button id="create">Criar sala</button>
   <div class="or">ou entre com o código</div>
   <div class="row"><input id="code" placeholder="CÓDIGO" maxlength="4" style="text-transform:uppercase"><button id="join" style="width:40%">Entrar</button></div>
@@ -89,6 +93,7 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
 <div id="lobby" class="screen" hidden>
   <div class="sub" style="margin:16px 0 0">Código da sala</div>
   <div id="lcode"></div>
+  <div id="lgame" class="sub" style="margin:0;font-weight:700;opacity:1"></div>
   <button id="share" class="ghost">Compartilhar código</button>
   <div class="sub" style="margin:10px 0 0">Duplas: lugares 1 e 3 contra 2 e 4</div>
   <div id="seats"></div>
@@ -119,6 +124,7 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
     <button id="acc" hidden>🚨 Renúncia!</button>
   </div>
   <div id="status"></div>
+  <div id="tbar"></div>
   <div id="hand"></div>
 </div>
 
@@ -143,7 +149,9 @@ function nm(){const n=$('name').value.trim();if(!n){toast('Digite seu nome');ret
 function show(id){for(const x of['home','lobby','game'])$(x).hidden=x!==id}
 function card(c,cls=''){return `<div class="card ${'hd'.includes(c[1])?'red':''} ${cls}" data-c="${c}"><b>${c[0]}</b><i>${SY[c[1]]}</i></div>`}
 
-$('create').onclick=()=>{const n=nm();n&&sock.emit('create',{name:n})};
+try{if(localStorage.game)$('gsel').value=localStorage.game}catch(e){}
+const GNAME={sueca:'Sueca',truco_p:'Truco Paulista',truco_m:'Truco Mineiro'};
+$('create').onclick=()=>{const n=nm(),g=$('gsel').value;try{localStorage.game=g}catch(e){}n&&sock.emit('create',{name:n,game:g})};
 $('join').onclick=()=>{const n=nm();n&&sock.emit('join',{name:n,code:$('code').value})};
 $('watch').onclick=()=>{const n=nm();n&&sock.emit('join',{name:n,code:$('code').value,watch:true})};
 $('sitbot').onclick=()=>{const i=st.seats.findIndex(s=>s&&s.bot);if(i>=0)sock.emit('sit',{seat:i})};
@@ -155,7 +163,9 @@ $('leave1').onclick=$('leave2').onclick=()=>{if(confirm('Sair da sala?'))sock.em
 $('share').onclick=$('gcode').onclick=()=>{const t=`Bora jogar Sueca! Código da sala: ${st.code}\n${location.origin}/?sala=${st.code}`;
   if(navigator.share)navigator.share({text:t}).catch(()=>{});else navigator.clipboard.writeText(t).then(()=>toast('Código copiado'))};
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-sit],[data-bot],#hand .card');if(!t)return;
+  const t=e.target.closest('[data-sit],[data-bot],[data-a],#hand .card');if(!t)return;
+  if(t.dataset.a){const [type,ans]=t.dataset.a.split(':');return sock.emit('act',{type,ans})}
+  if(!t.dataset.sit&&!t.dataset.bot&&st.game!=='sueca'){if(st.canPlay)sock.emit('play',{card:t.dataset.c});return}
   if(t.dataset.sit)sock.emit('sit',{seat:+t.dataset.sit});
   else if(t.dataset.bot)sock.emit('bot',{seat:+t.dataset.bot});
   else if(st.legal.includes(t.dataset.c)){
@@ -223,10 +233,10 @@ function cruz(n){ // placar em cruz: uma bolinha em cada canto por ponto
 function render(){
   if(!st)return show('home');
   if(st.phase==='lobby')return renderLobby();
-  show('game');renderGame();
+  show('game');if(st.game!=='sueca')return renderTruco();$('tbar').innerHTML='';renderGame();
 }
 function renderLobby(){
-  show('lobby');$('lcode').textContent=st.code;$('ov').hidden=true;
+  show('lobby');$('lcode').textContent=st.code;$('lgame').textContent=GNAME[st.game]||'';$('ov').hidden=true;
   $('seats').innerHTML=st.seats.map((s,i)=>`<div class="seat t${i%2}">
     <small>${i%2?'Dupla B':'Dupla A'} · lugar ${i+1}</small>
     <span>${s?(s.bot?'🤖 ':'')+esc(s.name)+(i===st.me?' (você)':''):'— vazio —'}</span>
@@ -234,6 +244,48 @@ function renderLobby(){
     ${st.host&&(!s||s.bot)?`<button class="ghost sm" data-bot="${i}">${s?'Tirar bot':'+ Bot'}</button>`:''}</div></div>`).join('');
   $('lspec').textContent=st.specs.length?'👀 Assistindo: '+st.specs.map(x=>x.name).join(', '):'';
   $('start').hidden=!st.host;$('wait').hidden=st.host;
+}
+function renderTruco(){
+  const sp=st.me<0,me=sp?0:st.me,my=me%2,NOS=sp?'Dupla A':'Nós',ELES=sp?'Dupla B':'Eles',TEAM=k=>k===my?NOS:ELES;
+  const O='4567QJKA23',nm=i=>esc(st.seats[i].name);
+  $('gnum').textContent=st.code+(st.specs.length?` · 👀${st.specs.length}`:'');
+  $('sitbot').hidden=!(sp&&st.seats.some(s=>s&&s.bot));$('acc').hidden=$('acc2').hidden=true;
+  $('score').innerHTML=`<div class="cz">${NOS} <b>${st.score[my]}</b> × <b>${st.score[1-my]}</b> ${ELES}</div><small style="display:block;opacity:.75">${st.variant==='mineiro'?'Mineiro':'Paulista'} · até 12 · Partidas ${st.matches[my]} × ${st.matches[1-my]}</small>`;
+  $('trump').innerHTML=st.vira?`<div><small>Vira · manilha<br><b style="font-size:16px">${O[(O.indexOf(st.vira[0])+1)%10]}</b></small></div>`+card(st.vira,'mini')
+    :`<div><small>Manilhas<br>4♣ 7♥ A♠ 7♦</small></div>`;
+  for(let i=0;i<4;i++){
+    const rel=(i-me+4)%4,el=$('p-'+POS[rel]),s=st.seats[i];
+    el.className='pl '+POS[rel]+(sp&&!rel?' show':'')+(st.turn===i&&st.phase==='play'&&!st.pending?' turn':'')+(i%2===my&&rel?' mate':'');
+    el.innerHTML=`${s.bot?'🤖 ':''}${esc(s.name)}${s.online?'':' 💤'}<small>${st.counts[i]} cartas${!sp&&i%2===my?' · parceiro':''}</small>`;
+  }
+  const tr=$('trick');tr.className='';clearTimeout(tr.h);
+  tr.innerHTML=st.trick.map(t=>card(t.card,'tk '+POS[(t.seat-me+4)%4]+(t.seat===st.win?' win':''))).join('');
+  const tp=$('tpts');tp.hidden=st.last==null;if(st.last!=null)tp.textContent=st.last<0?'Cangou!':`Vaza de ${TEAM(st.last)}`;
+  if(st.win!=null)tr.h=setTimeout(()=>tr.className='go-'+POS[(st.win-me+4)%4],1600);
+  $('hand').innerHTML=st.hand.map(c=>card(c,st.canPlay?'ok':'')).join('');
+  {const cs=[...$('hand').children],n=cs.length,av=$('hand').clientWidth-8,ml=n>1?Math.min(4,(av-n*66)/(n-1)):0;cs.forEach((c,i)=>c.style.marginLeft=i?ml+'px':'0')}
+  const vz=st.R.map(x=>x<0?'⚪':x===my?'🟢':'🔴').join(' ');
+  let txt='',bar='';
+  if(st.phase==='decide11'){
+    if(!sp&&st.d11===my){txt=`Mão de ${st.onze}! Seu parceiro tem:`;bar=(st.partnerHand||[]).map(c=>card(c)).join('')+'<button data-a="d11:play">Jogar</button><button class="ghost" data-a="d11:run">Correr</button>'}
+    else txt=`Mão de ${st.onze}: ${TEAM(st.d11)} estão decidindo…`;
+  }else if(st.phase==='play'){
+    const p=st.pending;
+    if(p){txt=`${nm(p.by)} pediu ${p.name.toUpperCase()}! (vale ${p.value})`;
+      if(!sp&&p.team===my)bar=`<button data-a="resp:yes">Aceitar</button><button class="ghost" data-a="resp:no">Correr</button>`+(p.raise?`<button class="red" data-a="resp:raise">${p.raise.toUpperCase()}!</button>`:'');
+      else txt+=' Aguardando resposta…';}
+    else{txt=(sp?'👀 Assistindo · ':'')+(st.turn===me&&!sp?'Sua vez!':`Vez de ${nm(st.turn)}`)+` · vale ${st.value}${st.ferro?' (mão de ferro)':''}`;
+      if(st.canTruco)bar=`<button class="red" data-a="truco">${st.callName.toUpperCase()}!</button>`}
+    if(vz)txt+='  '+vz;
+  }
+  $('status').textContent=txt;$('tbar').innerHTML=bar;
+  const r=st.result,over=st.phase==='handEnd'||st.phase==='end';$('ov').hidden=!over;
+  if(over&&r){
+    $('ovt').textContent=st.phase==='end'?(st.score[my]>=12?(sp?`${NOS} venceu`:'🏆 Vocês venceram a partida!'):(sp?`${ELES} venceu`:'Eles venceram a partida'))+` (${st.matches[my]} × ${st.matches[1-my]})`
+      :r.team<0?'Empatou tudo, ninguém pontua':(r.team===my&&!sp?`Vocês ganharam ${r.value}`:`${TEAM(r.team)} ganharam ${r.value}`);
+    $('ovp').textContent=`Placar: ${NOS} ${st.score[my]} × ${st.score[1-my]} ${ELES}`;
+    $('next').textContent=st.phase==='end'?'Nova partida':'Próxima mão';
+  }
 }
 function renderGame(){
   const sp=st.me<0,me=sp?0:st.me,my=me%2,NOS=sp?'Dupla A':'Nós',ELES=sp?'Dupla B':'Eles';
