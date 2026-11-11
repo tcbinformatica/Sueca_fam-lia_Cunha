@@ -78,14 +78,14 @@ function play(r, seat, card) {
   if (r.trick.length < 4) { r.turn = (seat + 1) % 4; return push(r); }
   const w = winnerOf(r.trick, r.trump).seat;
   r.pts[w % 2] += r.trick.reduce((a, t) => a + pts(t.card), 0);
-  r.pause = true; r.turn = w; push(r);
+  r.pause = true; r.turn = w; r.win = w; push(r);
   const hid = r.hid;
   setTimeout(() => {
     if (r.hid !== hid || r.phase !== 'play') return;
-    r.trick = []; r.pause = false;
+    r.trick = []; r.pause = false; r.win = null;
     if (!r.hands[0].length) endHand(r);
     push(r);
-  }, 1600);
+  }, 3300);                               // tempo para ver a vaza e contar os pontos
 }
 function closeHand(r) {                  // 4 pontos fecha a partida e soma no placar geral
   if (r.games.some(x => x >= 4)) { r.phase = 'end'; r.matches[r.games[0] >= 4 ? 0 : 1]++; }
@@ -131,7 +131,7 @@ function tick(r) {
   if (r.phase !== 'play' || r.pause) return;
   const s = r.seats[r.turn];
   if (s.bot || !s.online)                 // bot joga; humano offline vira bot após 15s
-    r.timer = setTimeout(() => play(r, r.turn, botCard(r, r.turn)), s.bot ? 900 : 15000);
+    r.timer = setTimeout(() => play(r, r.turn, botCard(r, r.turn)), s.bot ? 1500 : 15000);
 }
 function view(r, pid) {
   const me = r.seats.findIndex(s => s && s.pid === pid);
@@ -144,7 +144,7 @@ function view(r, pid) {
     canAccuse: me >= 0 && (r.phase === 'play' || r.phase === 'handEnd') && !r.judged && !r.falseAcc[me % 2],
     msg: r.msg,
     trump: r.trump, trumpCard: r.trumpCard, dealer: r.dealer, turn: r.turn,
-    trick: r.trick, games: r.games, matches: r.matches, result: r.result,
+    trick: r.trick, win: r.pause ? r.win : null, games: r.games, matches: r.matches, result: r.result,
   };
 }
 function push(r) {
