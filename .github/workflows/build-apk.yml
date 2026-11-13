@@ -18,6 +18,8 @@ jobs:
           sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <application#' android/app/src/main/AndroidManifest.xml
           grep -c RECORD_AUDIO android/app/src/main/AndroidManifest.xml
       - run: npx cap sync android
+      - name: Assinatura fixa (atualiza sem desinstalar)
+        run: mkdir -p ~/.android && cp android-signing/debug.keystore ~/.android/debug.keystore
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
         with:
