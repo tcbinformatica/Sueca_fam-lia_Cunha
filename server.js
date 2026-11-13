@@ -20,7 +20,8 @@ const sortFn = (a, b) => SUITS.indexOf(a[1]) - SUITS.indexOf(b[1]) || str(b) - s
 const rooms = {}, where = {};
 // Outros jogos (cada um no seu arquivo em games/). A Sueca continua neste arquivo.
 const GAMES = { truco_p: require('./games/truco')('paulista'), truco_m: require('./games/truco')('mineiro'),
-  pife: require('./games/pife')(), burro: require('./games/burro')(), buraco: require('./games/buraco')() };
+  pife: require('./games/pife')(), burro: require('./games/burro')(), buraco: require('./games/buraco')(),
+  blackjack: require('./games/blackjack')(), holdem: require('./games/poker')('holdem'), omaha: require('./games/poker')('omaha') };
 const ctx = { push: r => push(r), say: (r, t) => say(r, t) };
 const other = r => r.game && r.game !== 'sueca' ? GAMES[r.game] : null;             // where[pid] = código da sala
 
@@ -242,7 +243,8 @@ io.on('connection', sock => {
   sock.on('start', () => {
     const r = room(); if (!r || r.host !== pid || r.phase !== 'lobby') return;
     if (other(r) && other(r).flex) {           // Pife/Burro: joga quem está sentado (2 a 4)
-      if (r.seats.filter(Boolean).length < 2) return sock.emit('err', 'Precisa de pelo menos 2 jogadores (use + Bot)');
+      const min = other(r).min || 2;
+      if (r.seats.filter(Boolean).length < min) return sock.emit('err', `Precisa de pelo menos ${min} jogadores (use + Bot)`);
     } else r.seats = r.seats.map((s, i) => s || { pid: 'bot' + i, name: BOT_NAMES[i], bot: true });
     if (other(r)) other(r).start(r, ctx); else deal(r);
     push(r);

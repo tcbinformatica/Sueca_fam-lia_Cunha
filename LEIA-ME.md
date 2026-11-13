@@ -37,6 +37,18 @@ Jogo de Sueca online e fechado: só entra quem tem o código da sala (4 letras).
 - Toque nas cartas para selecionar: com 3 ou mais, **Baixar jogo**; com elas selecionadas, toque num jogo da sua dupla para juntar; com 1, **Descartar**.
 - Só sequências do mesmo naipe; o 2 é curinga (1 por jogo). Canastra (7+): limpa 200, suja 100. Bate só com canastra limpa (+100). Quem não pegou o morto perde 100.
 
+## Blackjack (1 a 4 jogadores contra a banca)
+- Fichas de brincadeira: cada um começa com 1.000 (quem zera recebe outros 1.000).
+- Aposte 10, 25, 50 ou 100. Na vez: **Pedir**, **Parar** ou **Dobrar** (só com 2 cartas).
+- 6 baralhos; a banca para no 17; Blackjack paga 3:2.
+
+## Poker: Texas Hold'em e Omaha (2 a 4 jogadores)
+- Cada um começa com 1.000 fichas; blinds 10/20; o botão D gira a cada mão.
+- Hold'em: 2 cartas na mão, usa quaisquer 5 entre mão e mesa.
+- Omaha: 4 cartas na mão, usa exatamente 2 da mão e 3 da mesa.
+- Botões: Desistir, Passar/Pagar, Apostar/Aumentar e ALL-IN. Potes paralelos são calculados sozinhos.
+- A partida acaba quando um jogador fica com todas as fichas.
+
 ## Câmera e voz
 - Toque em 📷 para ligar a câmera e o microfone. A sua imagem aparece no canto de baixo e a dos amigos aparece perto dos nomes deles.
 - 🎤 liga e desliga o microfone. 🚫📷 desliga tudo.
