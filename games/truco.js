@@ -69,13 +69,14 @@ module.exports = function (variant) {
       t.level < C.steps.length && t.lastRaise !== seat % 2;
   };
 
-  function playCard(r, seat, card, ctx) {
+  function playCard(r, seat, card, ctx, hidden) {
     const t = r.t;
     t.hands[seat].splice(t.hands[seat].indexOf(card), 1);
-    t.trick.push({ seat, card });
+    t.trick.push({ seat, card, hidden: !!hidden });
     if (t.trick.length < 4) { t.turn = (seat + 1) % 4; return ctx.push(r); }
-    const best = Math.max(...t.trick.map(x => power(r, x.card)));
-    const top = t.trick.filter(x => power(r, x.card) === best);
+    const pw = x => x.hidden ? -1 : power(r, x.card);           // encoberta não ganha de nada
+    const best = Math.max(...t.trick.map(pw));
+    const top = t.trick.filter(x => pw(x) === best);
     const res = new Set(top.map(x => x.seat % 2)).size > 1 ? -1 : top[0].seat % 2;
     t.R.push(res); t.win = res === -1 ? null : top.find(x => x.seat % 2 === res).seat;
     t.pause = true; ctx.push(r);
@@ -94,6 +95,11 @@ module.exports = function (variant) {
     if (m.type === 'play') {
       if (r.phase !== 'play' || t.pause || t.pending || t.turn !== seat || !t.hands[seat].includes(m.card)) return;
       return playCard(r, seat, m.card, ctx);
+    }
+    if (m.type === 'cover') {
+      if (r.phase !== 'play' || t.pause || t.pending || t.turn !== seat || !t.R.length || !t.hands[seat].includes(m.card)) return;
+      ctx.say(r, `${name(r, seat)} jogou encoberta.`);
+      return playCard(r, seat, m.card, ctx, true);
     }
     if (m.type === 'truco') {
       if (!canTruco(r, seat)) return;
@@ -176,12 +182,13 @@ module.exports = function (variant) {
     return {
       variant, onze: C.onze,
       hand: me >= 0 ? t.hands[me] : [], counts: t.hands.map(h => h.length),
-      trick: t.trick, win: t.pause ? t.win : null, last: t.pause ? t.R[t.R.length - 1] : null, R: t.R,
+      trick: t.trick.map(x => x.hidden ? { seat: x.seat, card: 'back' } : x), win: t.pause ? t.win : null, last: t.pause ? t.R[t.R.length - 1] : null, R: t.R,
       turn: t.turn, vira: t.vira || null, score: t.score, value: t.value, ferro: t.ferro,
       pending: p && { team: p.team, by: p.by, name: C.names[t.level], value: C.steps[t.level], raise: C.names[t.level + 1] || null },
       callName: C.names[t.level] || null,
       canTruco: me >= 0 && canTruco(r, me),
       canPlay: me >= 0 && r.phase === 'play' && !t.pause && !p && t.turn === me,
+      canCover: me >= 0 && r.phase === 'play' && !t.pause && !p && t.turn === me && t.R.length > 0,
       d11: r.phase === 'decide11' ? t.d11 : null,
       partnerHand: r.phase === 'decide11' && my === t.d11 ? t.hands[(me + 2) % 4] : null,
       result: t.result,

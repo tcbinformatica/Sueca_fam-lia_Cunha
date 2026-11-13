@@ -71,7 +71,7 @@ function deal(r) {
   r.hands.forEach(h => h.sort(sortFn));
   r.turn = (r.dealer + 1) % 4;
   r.trick = []; r.pts = [0, 0]; r.phase = 'play'; r.result = null; r.pause = false;
-  r.renounces = []; r.judged = false; r.falseAcc = [false, false]; r.hid = (r.hid || 0) + 1;
+  r.log = []; r.renounces = []; r.judged = false; r.falseAcc = [false, false]; r.hid = (r.hid || 0) + 1;
 }
 function play(r, seat, card) {
   if (r.phase !== 'play' || r.pause || r.turn !== seat || !r.hands[seat].includes(card)) return;
@@ -82,7 +82,9 @@ function play(r, seat, card) {
   r.trick.push({ seat, card });
   if (r.trick.length < 4) { r.turn = (seat + 1) % 4; return push(r); }
   const w = winnerOf(r.trick, r.trump).seat;
-  r.pts[w % 2] += r.trick.reduce((a, t) => a + pts(t.card), 0);
+  const tp = r.trick.reduce((a, t) => a + pts(t.card), 0);
+  r.pts[w % 2] += tp;
+  r.log.push({ cards: r.trick.slice(), win: w, p: tp, lead: r.trick[0].card[1] });   // histórico da mão
   r.pause = true; r.turn = w; r.win = w; push(r);
   const hid = r.hid;
   setTimeout(() => {
@@ -104,7 +106,7 @@ function endHand(r) {
   r.result = { team: t, g, pts: r.pts.slice(), band, m };
   closeHand(r);
 }
-function say(r, text) { r.msg = { id: Date.now() + Math.random(), text }; }
+function say(r, text) { r.msg = { id: Date.now() + Math.random(), text }; if (r.log && !other(r)) r.log.push({ text }); }
 function botsNotice(r, offender) {           // bots adversários às vezes percebem a renúncia
   const hid = r.hid;
   r.seats.forEach((s, i) => {
@@ -162,7 +164,7 @@ function view(r, pid) {
     canAccuse: me >= 0 && (r.phase === 'play' || r.phase === 'handEnd') && !r.judged && !r.falseAcc[me % 2],
     msg: r.msg,
     trump: r.trump, trumpCard: r.trumpCard, dealer: r.dealer, turn: r.turn,
-    trick: r.trick, pts: r.pts, win: r.pause ? r.win : null, mult: r.mult, games: r.games, matches: r.matches, result: r.result,
+    trick: r.trick, log: r.log, pts: r.pts, win: r.pause ? r.win : null, mult: r.mult, games: r.games, matches: r.matches, result: r.result,
   };
 }
 function push(r) {

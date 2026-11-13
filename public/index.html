@@ -95,6 +95,11 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
 #table.bur .pl.left,#table.bur .pl.right{top:auto;bottom:44%}#table.bur #logo{opacity:.1}
 .card.mini2{width:52px;height:76px;font-size:19px;padding:5px 6px}.card.mini2 i{font-size:23px}
 #hand .card.sel{transform:translateY(-16px);box-shadow:0 0 0 3px #6ec6ff}
+#hist{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px;z-index:8}
+#hist>div{background:#0b4d2f;border:2px solid #f4c542;border-radius:16px;padding:14px;width:100%;max-width:420px;max-height:80vh;overflow-y:auto}
+.hv{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:13px}
+.hv .card.mini{flex-shrink:0}.hv .ren{outline:2px solid #d84343}.hv .hw{outline:2px solid #f4c542}.hv span{margin-left:auto;text-align:right;min-width:74px}
+.hm{padding:6px 0;font-size:13px;color:#f4c542;border-bottom:1px solid rgba(255,255,255,.12)}
 #toast{z-index:9;max-width:90vw;text-align:center}
 /* ---------- Tela larga (computador / tablet deitado) ---------- */
 @media (min-width:900px) and (min-aspect-ratio:5/4){
@@ -156,7 +161,7 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
     <div id="tpts" hidden></div>
     <video id="v-top" class="vid" autoplay playsinline></video><video id="v-left" class="vid" autoplay playsinline></video>
     <video id="v-right" class="vid" autoplay playsinline></video><video id="v-bottom" class="vid" autoplay playsinline muted></video>
-    <div id="gbox"><div>Sala<b id="gnum"></b></div><div class="gr"><button id="gcode" class="ghost">📤 Enviar link</button><button id="cam" class="ghost">📷</button><button id="mic" class="ghost" hidden>🎤</button><button id="sitbot" hidden>🪑 Jogar</button></div></div>
+    <div id="gbox"><div>Sala<b id="gnum"></b></div><div class="gr"><button id="gcode" class="ghost">📤 Enviar link</button><button id="cam" class="ghost">📷</button><button id="mic" class="ghost" hidden>🎤</button><button id="sitbot" hidden>🪑 Jogar</button><button id="hbtn" class="ghost" hidden>📜</button></div></div>
     <button id="acc" hidden>🚨 Renúncia!</button>
   </div>
   <div id="status"></div>
@@ -164,6 +169,7 @@ button.sm{width:auto;padding:8px 12px;font-size:14px;margin:4px 0 0}
   <div id="hand"></div>
 </div>
 
+<div id="hist" hidden><div><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:18px">📜 Histórico da mão</b><button id="hclose" class="ghost sm">Fechar</button></div><div id="hlist"></div></div></div>
 <div id="ov" hidden><div><div id="ovt"></div><div id="ovp"></div><button id="acc2" class="ghost" hidden>🚨 Acusar renúncia</button><button id="next"></button></div></div>
 <div id="toast"></div>
 
@@ -183,7 +189,7 @@ sock.on('err',toast);
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t.h);t.h=setTimeout(()=>t.classList.remove('on'),3500)}
 function nm(){const n=$('name').value.trim();if(!n){toast('Digite seu nome');return null}try{localStorage.name=n}catch(e){}return n}
 function show(id){for(const x of['home','lobby','game'])$(x).hidden=x!==id}
-function card(c,cls=''){return `<div class="card ${'hd'.includes(c[1])?'red':''} ${cls}" data-c="${c}"><b>${c[0]==='T'?'10':c[0]}</b><i>${SY[c[1]]}</i></div>`}
+function card(c,cls=''){if(c==='back')return `<div class="card back ${cls}"></div>`;return `<div class="card ${'hd'.includes(c[1])?'red':''} ${cls}" data-c="${c}"><b>${c[0]==='T'?'10':c[0]}</b><i>${SY[c[1]]}</i></div>`}
 
 // ---------- Escolha do jogo, com um desenho para cada ----------
 function mc(x,y,rot,r,su,back){ // carta pequena desenhada em SVG
@@ -214,8 +220,18 @@ $('watch').onclick=()=>{const n=nm();n&&sock.emit('join',{name:n,code:$('code').
 $('sitbot').onclick=()=>{const i=st.seats.findIndex(s=>s&&s.bot);if(i>=0)sock.emit('sit',{seat:i})};
 $('start').onclick=()=>sock.emit('start');
 $('next').onclick=()=>sock.emit('next');
+$('hbtn').onclick=()=>{$('hist').hidden=false;drawHist()};$('hclose').onclick=()=>$('hist').hidden=true;
+function drawHist(){ // vazas da mão: quem jogou o quê, quem levou e os pontos
+  if(!st||!st.log)return;const me=st.me<0?0:st.me,my=me%2,nm=i=>esc(st.seats[i].name);let k=0;
+  $('hlist').innerHTML=st.log.length?st.log.map(v=>{
+    if(v.text)return `<div class="hm">${esc(v.text)}</div>`;k++;
+    return `<div class="hv"><b style="width:18px">${k}ª</b>${v.cards.map((t,j)=>{const ren=j>0&&t.card[1]!==v.lead;return `<div title="${nm(t.seat)}" style="text-align:center;font-size:10px">${card(t.card,'mini'+(t.seat===v.win?' hw':'')+(ren?' ren':''))}<div>${nm(t.seat).slice(0,6)}</div></div>`}).join('')}
+      <span>${nm(v.win)}<br><b>+${v.p}</b> ${v.win%2===my?(st.me<0?'A':'Nós'):(st.me<0?'B':'Eles')}</span></div>`}).reverse().join('')
+    :'<div class="hm">Nenhuma vaza ainda.</div>';
+  $('hlist').insertAdjacentHTML('beforeend','<div style="font-size:11px;opacity:.7;margin-top:8px">Borda amarela: quem levou. Borda vermelha: não seguiu o naipe (pode ser corte com trunfo ou renúncia).</div>');
+}
 $('acc').onclick=$('acc2').onclick=()=>{if(confirm('Acusar a outra dupla de renúncia?\nSe errar, eles ganham 1 jogo.'))sock.emit('accuse')};
-let lastMsg=null;
+let lastMsg=null,cover=false;
 $('leave1').onclick=$('leave2').onclick=()=>{if(confirm('Sair da sala?'))sock.emit('leave')};
 $('share').onclick=$('gcode').onclick=()=>{const t=`Bora jogar Sueca! Código da sala: ${st.code}\n${location.origin}/?sala=${st.code}`;
   if(navigator.share)navigator.share({text:t}).catch(()=>{});else navigator.clipboard.writeText(t).then(()=>toast('Código copiado'))};
@@ -229,8 +245,9 @@ document.addEventListener('click',e=>{
       else if(a==='disc')sock.emit('act',{type:'play',card:cs[0]});return render()}
     if(t.dataset.c&&t.closest('#hand')){const c=t.dataset.c;bsel.has(c)?bsel.delete(c):bsel.add(c);return render()}
     return}
+  if(t.dataset.a==='coverMode'){cover=!cover;return render()}
   if(t.dataset.a){const [type,ans]=t.dataset.a.split(':');return sock.emit('act',{type,ans})}
-  if(!t.dataset.sit&&!t.dataset.bot&&st.game!=='sueca'){if(st.canPlay)sock.emit('play',{card:t.dataset.c});return}
+  if(!t.dataset.sit&&!t.dataset.bot&&st.game!=='sueca'){if(st.canPlay){if(cover&&st.canCover)sock.emit('act',{type:'cover',card:t.dataset.c});else sock.emit('play',{card:t.dataset.c})}cover=false;return}
   if(t.dataset.sit)sock.emit('sit',{seat:+t.dataset.sit});
   else if(t.dataset.bot)sock.emit('bot',{seat:+t.dataset.bot});
   else if(st.legal.includes(t.dataset.c)){
@@ -298,7 +315,7 @@ function cruz(n){ // placar em cruz: uma bolinha em cada canto por ponto
 function render(){
   if(!st)return show('home');
   if(st.phase==='lobby')return renderLobby();
-  show('game');for(const p of POS)$('p-'+p).style.display='';$('table').classList.toggle('bur',st.game==='buraco');document.querySelectorAll('.mrow').forEach(x=>x.remove());
+  show('game');for(const p of POS)$('p-'+p).style.display='';$('hbtn').hidden=st.game!=='sueca';if(!$('hist').hidden)drawHist();$('table').classList.toggle('bur',st.game==='buraco');document.querySelectorAll('.mrow').forEach(x=>x.remove());
   if(st.game==='buraco')return renderBuraco();
   if(st.game==='pife')return renderPife();if(st.game==='burro')return renderBurro();if(st.game!=='sueca')return renderTruco();$('tbar').innerHTML='';renderGame();
 }
@@ -426,7 +443,9 @@ function renderTruco(){
       if(!sp&&p.team===my)bar=`<button data-a="resp:yes">Aceitar</button><button class="ghost" data-a="resp:no">Correr</button>`+(p.raise?`<button class="red" data-a="resp:raise">${p.raise.toUpperCase()}!</button>`:'');
       else txt+=' Aguardando resposta…';}
     else{txt=(sp?'👀 Assistindo · ':'')+(st.turn===me&&!sp?'Sua vez!':`Vez de ${nm(st.turn)}`)+` · vale ${st.value}${st.ferro?' (mão de ferro)':''}`;
-      if(st.canTruco)bar=`<button class="red" data-a="truco">${st.callName.toUpperCase()}!</button>`}
+      if(st.canTruco)bar=`<button class="red" data-a="truco">${st.callName.toUpperCase()}!</button>`;
+      if(!st.canCover)cover=false;
+      if(st.canCover)bar+=`<button class="${cover?'':'ghost'}" data-a="coverMode">🂠 ${cover?'Toque na carta para encobrir':'Encobrir'}</button>`}
     if(vz)txt+='  '+vz;
   }
   $('status').textContent=txt;$('tbar').innerHTML=bar;
